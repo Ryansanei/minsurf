@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Associate Family — minsurf</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --night:#070d14;--panel:#0d1925;--panel2:#0a131d;
+  --line:rgba(120,150,170,.18);--teal:#16c0b0;--teal-br:#2dd4bf;
+  --gold:#f5a623;--txt:#dbe6ee;--mut:#93a4b2;--head:#fff;
+  --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{background:radial-gradient(120% 80% at 80% -10%,#122231 0%,#070d14 58%);color:var(--txt);font-family:var(--sans);overflow:hidden;}
+.app{display:flex;height:100vh;}
+.side{width:300px;flex:0 0 300px;height:100%;overflow-y:auto;background:linear-gradient(180deg,var(--panel),var(--panel2));border-right:1px solid var(--line);padding:22px 20px 40px;}
+.kick{color:var(--teal);font-weight:700;letter-spacing:.16em;font-size:10px;text-transform:uppercase;}
+h1{color:var(--head);font-size:21px;font-weight:800;line-height:1.2;margin:8px 0 4px;}
+.tag{color:var(--mut);font-size:12px;line-height:1.6;}
+.sec{margin-top:20px;}
+.sec>.label{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--teal-br);margin-bottom:9px;}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;}
+.ctl .name{font-size:12px;color:var(--txt);}
+.ctl .val{font:600 12px var(--sans);color:var(--teal-br);}
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:4px;background:rgba(120,150,170,.25);outline:none;margin-bottom:6px;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--teal);cursor:pointer;border:2px solid #0a131d;}
+.name-row{display:flex;justify-content:space-between;font-size:10px;color:var(--mut);margin-top:2px;}
+.toggles{display:flex;flex-wrap:wrap;gap:7px;}
+.chip{font:600 11px var(--sans);color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:5px 11px;cursor:pointer;}
+.chip.on{color:#fff;border-color:var(--teal);background:rgba(22,192,176,.12);}
+.stats{margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+.stat{display:flex;justify-content:space-between;padding:8px 13px;font-size:12px;border-bottom:1px solid var(--line);}
+.stat:last-child{border-bottom:none;}
+.stat .k{color:var(--mut);}.stat .v{color:#fff;font-weight:600;}
+.status{margin-top:12px;padding:11px 13px;border-radius:10px;font-size:12px;line-height:1.6;border:1px solid var(--line);background:rgba(255,255,255,.02);}
+.status.ok{border-color:rgba(22,192,176,.4);background:rgba(22,192,176,.06);}
+.status.ok b{color:var(--teal-br);}
+.math{margin-top:14px;font-size:11px;color:var(--mut);line-height:1.8;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-family:monospace;}
+.stage{flex:1;position:relative;}
+canvas{display:block;}
+.hud{position:absolute;left:14px;bottom:14px;font-size:11px;color:var(--mut);background:rgba(7,13,20,.55);padding:6px 11px;border-radius:7px;border:1px solid var(--line);}
+.label-t{position:absolute;top:14px;right:14px;font-size:11px;color:var(--teal-br);background:rgba(7,13,20,.55);padding:6px 11px;border-radius:7px;border:1px solid var(--line);font-family:monospace;}
+</style>
+
+<div class="app">
+<aside class="side">
+  <div class="kick">Minimal Surfaces · Weierstrass–Enneper</div>
+  <h1>Associate Family</h1>
+  <div class="tag">The catenoid and helicoid are isometric — the same surface seen from different angles in Gauss-map space. Drag the slider to morph between them.</div>
+
+  <div class="sec">
+    <div class="label">Morphing parameter t</div>
+    <div class="ctl">
+      <div class="row"><span class="name">t</span><span class="val" id="tVal">0.000</span></div>
+      <input type="range" id="tSlider" min="0" max="1.5708" step="0.005" value="0">
+      <div class="name-row"><span>Catenoid (t=0)</span><span>Helicoid (t=π/2)</span></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="label">Scale a</div>
+    <div class="ctl">
+      <div class="row"><span class="name">a</span><span class="val" id="aVal">1.00</span></div>
+      <input type="range" id="aSlider" min="0.5" max="2.0" step="0.01" value="1.0">
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="label">View</div>
+    <div class="toggles">
+      <span class="chip on" id="cSurf">Surface</span>
+      <span class="chip on" id="cWire">Wireframe</span>
+      <span class="chip" id="cAuto">Auto-rotate</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span class="k">Surface area</span><span class="v" id="sArea">—</span></div>
+    <div class="stat"><span class="k">Max |H| (mean curv.)</span><span class="v" style="color:var(--teal-br)">≈ 0</span></div>
+    <div class="stat"><span class="k">Isometry</span><span class="v" style="color:var(--teal-br)">✓ preserved</span></div>
+    <div class="stat"><span class="k">K (Gaussian curv.)</span><span class="v" id="sK">—</span></div>
+  </div>
+
+  <div class="status ok">
+    <b>Key insight:</b> area, angles, and Gaussian curvature are identical for every t. Only the embedding in ℝ³ changes.
+  </div>
+
+  <div class="math">
+X_t = Re(e^{it} · Φ(ζ))<br>
+Φ = (−½e^{−ζ}(1−e^{2ζ}),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;i/2·e^{−ζ}(1+e^{2ζ}), −1)<br><br>
+x = a(cos t · cosh u cos v<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;− sin t · sinh u sin v)<br>
+y = a(cos t · cosh u sin v<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ sin t · sinh u cos v)<br>
+z = a(−cos t · u + sin t · v)
+  </div>
+</aside>
+
+<div class="stage" id="stage">
+  <div class="hud">drag to rotate · scroll to zoom</div>
+  <div class="label-t" id="labelT">t = 0 → catenoid</div>
+</div>
+</div>
+
+<script>
+const NU=50, NV=80, UR=2.2;
+const PI = Math.PI;
+
+function assocPos(u, v, t, a) {
+  const ct=Math.cos(t), st=Math.sin(t);
+  return [
+    a*(ct*Math.cosh(u)*Math.cos(v) - st*Math.sinh(u)*Math.sin(v)),
+    a*(ct*Math.cosh(u)*Math.sin(v) + st*Math.sinh(u)*Math.cos(v)),
+    a*(-ct*u + st*v)
+  ];
+}
+
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42,1,0.01,100);
+scene.add(new THREE.AmbientLight(0x5a7080,1.0));
+const d1=new THREE.DirectionalLight(0xffffff,0.8);d1.position.set(3,5,4);scene.add(d1);
+const d2=new THREE.DirectionalLight(0x2dd4bf,0.5);d2.position.set(-4,-2,-3);scene.add(d2);
+
+// Build geometry
+const geo = new THREE.BufferGeometry();
+const verts = NU*NV;
+const posArr = new Float32Array(verts*3);
+const colArr = new Float32Array(verts*3);
+const idxList = [];
+for(let i=0;i<NU-1;i++){
+  for(let j=0;j<NV-1;j++){
+    const a=i*NV+j, b=i*NV+j+1, c=(i+1)*NV+j, d=(i+1)*NV+j+1;
+    idxList.push(a,b,d, a,d,c);
+  }
+}
+geo.setAttribute('position', new THREE.BufferAttribute(posArr,3));
+geo.setAttribute('color', new THREE.BufferAttribute(colArr,3));
+geo.setIndex(idxList);
+
+const surfMat = new THREE.MeshStandardMaterial({
+  side:THREE.DoubleSide, vertexColors:true,
+  metalness:0.1, roughness:0.45, transparent:true, opacity:0.93
+});
+const wireMat = new THREE.LineBasicMaterial({color:0x8fe9df,transparent:true,opacity:0.22});
+const surfMesh = new THREE.Mesh(geo, surfMat);
+const wireGeo = new THREE.WireframeGeometry(geo);
+const wireMesh = new THREE.LineSegments(wireGeo, wireMat);
+scene.add(surfMesh);
+scene.add(wireMesh);
+
+function lerp(a,b,t){return a+(b-a)*t;}
+
+function updateMesh(t, a) {
+  // Fill positions
+  for(let i=0;i<NU;i++){
+    const u=-UR+2*UR*i/(NU-1);
+    for(let j=0;j<NV;j++){
+      const v=2*PI*j/(NV-1);
+      const [x,y,z]=assocPos(u,v,t,a);
+      const k=(i*NV+j)*3;
+      posArr[k]=x; posArr[k+1]=y; posArr[k+2]=z;
+    }
+  }
+  // Center
+  let cx=0,cy=0,cz=0;
+  for(let k=0;k<verts*3;k+=3){cx+=posArr[k];cy+=posArr[k+1];cz+=posArr[k+2];}
+  cx/=verts; cy/=verts; cz/=verts;
+  let minZ=1e9,maxZ=-1e9;
+  for(let k=0;k<verts*3;k+=3){
+    posArr[k]-=cx; posArr[k+1]-=cy; posArr[k+2]-=cz;
+    if(posArr[k+2]<minZ)minZ=posArr[k+2];
+    if(posArr[k+2]>maxZ)maxZ=posArr[k+2];
+  }
+  // Color by z (teal→amber)
+  const zr=maxZ-minZ||1;
+  for(let i=0;i<verts;i++){
+    const zt=(posArr[i*3+2]-minZ)/zr;
+    colArr[i*3]  =zt<.5?lerp(.04,.18,zt*2):lerp(.18,.96,(zt-.5)*2);
+    colArr[i*3+1]=zt<.5?lerp(.42,.83,zt*2):lerp(.83,.65,(zt-.5)*2);
+    colArr[i*3+2]=zt<.5?lerp(.38,.75,zt*2):lerp(.75,.14,(zt-.5)*2);
+  }
+  geo.getAttribute('position').needsUpdate=true;
+  geo.getAttribute('color').needsUpdate=true;
+  geo.computeVertexNormals();
+  // Recompute wireframe
+  wireGeo.copy(new THREE.WireframeGeometry(geo));
+  // Area
+  const idx=geo.index.array;
+  let area=0;
+  for(let f=0;f<idx.length;f+=3){
+    const a0=idx[f]*3,b0=idx[f+1]*3,c0=idx[f+2]*3;
+    const e1x=posArr[b0]-posArr[a0],e1y=posArr[b0+1]-posArr[a0+1],e1z=posArr[b0+2]-posArr[a0+2];
+    const e2x=posArr[c0]-posArr[a0],e2y=posArr[c0+1]-posArr[a0+1],e2z=posArr[c0+2]-posArr[a0+2];
+    area+=0.5*Math.hypot(e1y*e2z-e1z*e2y,e1z*e2x-e1x*e2z,e1x*e2y-e1y*e2x);
+  }
+  document.getElementById('sArea').textContent=area.toFixed(4);
+  // K at neck (u=0): K = -sech^4(0) = -1
+  document.getElementById('sK').textContent=(-1/Math.pow(Math.cosh(0),4)).toFixed(4);
+}
+
+// Camera orbit
+let camR=5.5,camTh=0.7,camPhi=1.2,target=new THREE.Vector3();
+let dragging=false,lastX=0,lastY=0,autoRot=false;
+function placeCam(){
+  camera.position.set(
+    target.x+camR*Math.sin(camPhi)*Math.cos(camTh),
+    target.y+camR*Math.cos(camPhi),
+    target.z+camR*Math.sin(camPhi)*Math.sin(camTh));
+  camera.lookAt(target);
+}
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;});
+addEventListener('pointerup',()=>dragging=false);
+addEventListener('pointermove',e=>{
+  if(!dragging)return;
+  camTh-=(e.clientX-lastX)*0.008;
+  camPhi=Math.max(0.1,Math.min(3.1,camPhi-(e.clientY-lastY)*0.008));
+  lastX=e.clientX;lastY=e.clientY;placeCam();
+});
+renderer.domElement.addEventListener('wheel',e=>{
+  e.preventDefault();
+  camR=Math.max(2,Math.min(14,camR*(1+Math.sign(e.deltaY)*0.09)));
+  placeCam();
+},{passive:false});
+
+function resize(){
+  const w=stage.clientWidth,h=stage.clientHeight;
+  renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();
+}
+addEventListener('resize',resize);
+
+// UI
+const tSlider=document.getElementById('tSlider');
+const aSlider=document.getElementById('aSlider');
+tSlider.addEventListener('input',()=>{
+  const t=parseFloat(tSlider.value), a=parseFloat(aSlider.value);
+  document.getElementById('tVal').textContent=t.toFixed(3);
+  const pct=t/(PI/2);
+  const lbl=pct<0.05?'t = 0 → catenoid':pct>0.95?'t = π/2 → helicoid':`t = ${t.toFixed(3)} → associate`;
+  document.getElementById('labelT').textContent=lbl;
+  updateMesh(t,a);
+});
+aSlider.addEventListener('input',()=>{
+  document.getElementById('aVal').textContent=parseFloat(aSlider.value).toFixed(2);
+  updateMesh(parseFloat(tSlider.value),parseFloat(aSlider.value));
+});
+document.getElementById('cSurf').addEventListener('click',function(){
+  const on=this.classList.toggle('on'); surfMesh.visible=on;
+});
+document.getElementById('cWire').addEventListener('click',function(){
+  const on=this.classList.toggle('on'); wireMesh.visible=on;
+});
+document.getElementById('cAuto').addEventListener('click',function(){
+  autoRot=this.classList.toggle('on');
+});
+
+function loop(){
+  requestAnimationFrame(loop);
+  if(autoRot){camTh+=0.006;placeCam();}
+  renderer.render(scene,camera);
+}
+
+resize(); placeCam();
+updateMesh(0, 1);
+loop();
+</script>
+</html>

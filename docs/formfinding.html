@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tensile Form-Finding — minsurf</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --night:#070d14;--panel:#0d1925;--panel2:#0a131d;
+  --line:rgba(120,150,170,.18);--teal:#16c0b0;--teal-br:#2dd4bf;
+  --gold:#f5a623;--red:#f06a6a;--txt:#dbe6ee;--mut:#93a4b2;--head:#fff;
+  --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{background:var(--night);color:var(--txt);font-family:var(--sans);overflow:hidden;}
+.app{display:flex;height:100vh;}
+/* ---- left: design panel ---- */
+.designer{width:320px;flex:0 0 320px;display:flex;flex-direction:column;background:linear-gradient(180deg,var(--panel),var(--panel2));border-right:1px solid var(--line);overflow:hidden;}
+.d-top{padding:18px 18px 12px;border-bottom:1px solid var(--line);}
+.kick{color:var(--teal);font-weight:700;letter-spacing:.16em;font-size:10px;text-transform:uppercase;}
+h1{color:var(--head);font-size:19px;font-weight:800;margin:6px 0 3px;}
+.tag{color:var(--mut);font-size:11px;line-height:1.55;}
+/* plan canvas */
+.plan-wrap{padding:14px 18px 8px;border-bottom:1px solid var(--line);}
+.plan-label{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--teal-br);margin-bottom:8px;}
+#plan{display:block;border-radius:8px;cursor:crosshair;border:1px solid var(--line);}
+.plan-hint{font-size:10px;color:var(--mut);margin-top:5px;}
+/* controls */
+.d-ctrl{padding:12px 18px;border-bottom:1px solid var(--line);flex:1;overflow-y:auto;}
+.sec-lbl{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--teal-br);margin:10px 0 7px;}
+.sec-lbl:first-child{margin-top:0;}
+.ctl-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;}
+.ctl-name{font-size:12px;color:var(--txt);white-space:nowrap;}
+.ctl-val{font:600 12px var(--sans);color:var(--teal-br);min-width:32px;text-align:right;}
+input[type=range]{-webkit-appearance:none;flex:1;height:4px;border-radius:4px;background:rgba(120,150,170,.25);outline:none;}
+input[type=range]:disabled{opacity:.35;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--teal);cursor:pointer;border:2px solid #0a131d;}
+.presets{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:2px;}
+.pbtn{font:600 11px var(--sans);color:var(--txt);background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:8px;padding:8px 4px;cursor:pointer;text-align:center;}
+.pbtn:hover{border-color:var(--teal);color:#fff;}
+.mast-list{max-height:90px;overflow-y:auto;margin-bottom:4px;}
+.mast-item{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer;margin-bottom:2px;}
+.mast-item:hover{background:rgba(255,255,255,.04);}
+.mast-item.selected{background:rgba(22,192,176,.12);border:1px solid rgba(22,192,176,.3);}
+.mast-dot{width:8px;height:8px;border-radius:50%;margin-right:6px;flex-shrink:0;}
+.mast-del{color:var(--red);cursor:pointer;padding:0 4px;opacity:.6;}
+.mast-del:hover{opacity:1;}
+/* action buttons */
+.d-btns{padding:12px 18px;border-top:1px solid var(--line);}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.btn{font:700 12px var(--sans);border-radius:9px;padding:10px 6px;cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--txt);}
+.btn.primary{grid-column:1/-1;background:var(--teal);color:#06222b;border-color:var(--teal);}
+.btn.primary.running{background:var(--gold);border-color:var(--gold);color:#3a2500;}
+.btn:hover:not(.primary){border-color:var(--teal);}
+.stats{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+.stat{padding:6px 10px;font-size:11px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);}
+.stat:nth-child(even){border-right:none;}
+.stat:nth-last-child(-n+2){border-bottom:none;}
+.stat .k{color:var(--mut);font-size:10px;display:block;}
+.stat .v{color:#fff;font-weight:600;}
+/* ---- right: 3D stage ---- */
+.stage{flex:1;position:relative;background:var(--night);}
+canvas{display:block;}
+.hud{position:absolute;left:14px;bottom:14px;font-size:11px;color:var(--mut);background:rgba(7,13,20,.6);padding:6px 11px;border-radius:7px;border:1px solid var(--line);}
+.status-bar{position:absolute;top:14px;right:14px;font-size:11px;padding:6px 11px;border-radius:7px;border:1px solid var(--line);background:rgba(7,13,20,.6);}
+.status-bar.ok{border-color:rgba(22,192,176,.4);color:var(--teal-br);}
+.status-bar.run{border-color:rgba(245,166,35,.4);color:var(--gold);}
+.status-bar.idle{color:var(--mut);}
+</style>
+
+<div class="app">
+<!-- ======== LEFT: DESIGN PANEL ======== -->
+<div class="designer">
+  <div class="d-top">
+    <div class="kick">Architecture · Minimal Surfaces</div>
+    <h1>Tensile Form-Finding</h1>
+    <div class="tag">Click the plan to place mast supports. Drag the height slider, then press Solve — the membrane finds its minimal-area shape.</div>
+  </div>
+
+  <div class="plan-wrap">
+    <div class="plan-label">Plan view — click to place masts</div>
+    <canvas id="plan" width="284" height="200"></canvas>
+    <div class="plan-hint">Click = add mast &nbsp;·&nbsp; Click mast = select &nbsp;·&nbsp; Right-click = remove</div>
+  </div>
+
+  <div class="d-ctrl">
+    <div class="sec-lbl">Presets</div>
+    <div class="presets">
+      <button class="pbtn" onclick="loadPreset('hypar')">Hypar</button>
+      <button class="pbtn" onclick="loadPreset('tent')">Tent</button>
+      <button class="pbtn" onclick="loadPreset('wave')">Wave</button>
+    </div>
+
+    <div class="sec-lbl">Selected mast height</div>
+    <div class="ctl-row">
+      <span class="ctl-name">Height</span>
+      <input type="range" id="hSlider" min="-1.5" max="4.0" step="0.1" value="2.0" disabled>
+      <span class="ctl-val" id="hVal">2.0</span>
+    </div>
+
+    <div class="sec-lbl">Boundary height</div>
+    <div class="ctl-row">
+      <span class="ctl-name">Edge z</span>
+      <input type="range" id="bSlider" min="-1.0" max="1.0" step="0.1" value="0">
+      <span class="ctl-val" id="bVal">0.0</span>
+    </div>
+
+    <div class="sec-lbl">Masts</div>
+    <div class="mast-list" id="mastList"><div style="font-size:11px;color:var(--mut);padding:4px 8px;">No masts placed yet.</div></div>
+
+    <div class="stats">
+      <div class="stat"><span class="k">Area</span><span class="v" id="sArea">—</span></div>
+      <div class="stat"><span class="k">Iterations</span><span class="v" id="sIter">0</span></div>
+      <div class="stat"><span class="k">Residual</span><span class="v" id="sRes">—</span></div>
+      <div class="stat"><span class="k">Masts</span><span class="v" id="sMasts">0</span></div>
+    </div>
+  </div>
+
+  <div class="d-btns">
+    <div class="btns">
+      <button class="btn primary" id="solveBtn">▶ Solve</button>
+      <button class="btn" id="resetBtn">⟳ Reset mesh</button>
+      <button class="btn" id="clearBtn">✕ Clear masts</button>
+      <button class="btn" id="exportBtn">⬇ Export OBJ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======== RIGHT: 3D STAGE ======== -->
+<div class="stage" id="stage">
+  <div class="hud">drag to rotate · scroll to zoom</div>
+  <div class="status-bar idle" id="statusBar">Add masts and press Solve</div>
+</div>
+</div>
+
+<script>
+/* ============================================================
+   CONSTANTS & STATE
+============================================================ */
+const N = 22;                     // grid N×N
+const HALF = 3.0;                 // grid spans [-3,3]×[-3,3] in (x,z)
+const STEP = 2*HALF/(N-1);
+const ETA = 0.18, MAXMOVE = 0.012, SMOOTH = 0.08;
+const MAST_COLORS = ['#2dd4bf','#f5a623','#f06a6a','#a78bfa','#34d399','#fb923c','#60a5fa','#f472b6'];
+
+let masts = [];        // [{cx,cz,h,gi,gj,color}, ...]  cx,cz in world space
+let selectedMast = -1;
+let running = false;
+let solveIter = 0;
+
+// Mesh buffers
+let V = new Float64Array(N*N*3);   // positions (x,y,z) — y is up
+let fixed = new Uint8Array(N*N);   // 0=free, 1=boundary, 2=mast
+let nbr = [];
+let tris = [];
+let edgeSegs = [];
+
+/* ============================================================
+   GRID INIT
+============================================================ */
+function initGrid() {
+  for(let i=0;i<N;i++) for(let j=0;j<N;j++) {
+    const k=i*N+j;
+    V[k*3]   = -HALF + j*STEP;   // x
+    V[k*3+1] = 0;                  // y (height)
+    V[k*3+2] = -HALF + i*STEP;   // z
+    fixed[k] = (i===0||i===N-1||j===0||j===N-1) ? 1 : 0;
+  }
+  // Apply boundary height
+  const bh = parseFloat(document.getElementById('bSlider').value);
+  for(let k=0;k<N*N;k++) if(fixed[k]===1) V[k*3+1]=bh;
+  // Reapply masts
+  for(const m of masts) {
+    const k=m.gi*N+m.gj;
+    V[k*3+1]=m.h; fixed[k]=2;
+  }
+  // Build triangles
+  tris=[];
+  for(let i=0;i<N-1;i++) for(let j=0;j<N-1;j++) {
+    const a=i*N+j, b=i*N+j+1, c=(i+1)*N+j, d=(i+1)*N+j+1;
+    tris.push([a,b,d],[a,d,c]);
+  }
+  // Build adjacency
+  nbr=Array.from({length:N*N},()=>new Set());
+  for(const [a,b,c] of tris){
+    nbr[a].add(b);nbr[a].add(c);
+    nbr[b].add(a);nbr[b].add(c);
+    nbr[c].add(a);nbr[c].add(b);
+  }
+  nbr=nbr.map(s=>Array.from(s));
+  // Edge segments for wireframe
+  const es=new Set(), el=[];
+  for(const [a,b,c] of tris){
+    for(const [p,q] of [[a,b],[b,c],[c,a]]){
+      const key=p<q?p+'_'+q:q+'_'+p;
+      if(!es.has(key)){es.add(key);el.push(p,q);}
+    }
+  }
+  edgeSegs=el;
+  solveIter=0;
+  buildThreeMeshes();
+}
+
+/* ============================================================
+   SOLVER — area gradient descent (same as soap_film_solver.html)
+============================================================ */
+function solverStep() {
+  const n=N*N;
+  const g=new Float64Array(n*3);
+  let area=0;
+  for(const [i,j,k] of tris){
+    const ix=i*3,jx=j*3,kx=k*3;
+    const e1x=V[jx]-V[ix],e1y=V[jx+1]-V[ix+1],e1z=V[jx+2]-V[ix+2];
+    const e2x=V[kx]-V[ix],e2y=V[kx+1]-V[ix+1],e2z=V[kx+2]-V[ix+2];
+    const cx=e1y*e2z-e1z*e2y,cy=e1z*e2x-e1x*e2z,cz=e1x*e2y-e1y*e2x;
+    const len=Math.hypot(cx,cy,cz); if(len<1e-12) continue;
+    area+=0.5*len;
+    const nx=cx/len,ny=cy/len,nz=cz/len;
+    addGrad(g,i,nx,ny,nz,V[kx]-V[jx],V[kx+1]-V[jx+1],V[kx+2]-V[jx+2]);
+    addGrad(g,j,nx,ny,nz,V[ix]-V[kx],V[ix+1]-V[kx+1],V[ix+2]-V[kx+2]);
+    addGrad(g,k,nx,ny,nz,V[jx]-V[ix],V[jx+1]-V[ix+1],V[jx+2]-V[ix+2]);
+  }
+  let maxg=1e-12;
+  for(let i=0;i<n;i++){
+    if(fixed[i]){g[i*3]=g[i*3+1]=g[i*3+2]=0;continue;}
+    const L=Math.hypot(g[i*3],g[i*3+1],g[i*3+2]);
+    if(L>maxg)maxg=L;
+  }
+  const sc=Math.min(ETA,MAXMOVE/maxg);
+  for(let i=0;i<n;i++){
+    if(fixed[i])continue;
+    V[i*3]-=sc*g[i*3]; V[i*3+1]-=sc*g[i*3+1]; V[i*3+2]-=sc*g[i*3+2];
+  }
+  if(SMOOTH>0){
+    const snap=Float64Array.from(V);
+    for(let i=0;i<n;i++){
+      if(fixed[i])continue;
+      const nb=nbr[i]; if(!nb.length)continue;
+      let sx=0,sy=0,sz=0;
+      for(const j of nb){sx+=snap[j*3];sy+=snap[j*3+1];sz+=snap[j*3+2];}
+      const m=nb.length;
+      V[i*3]+=SMOOTH*(sx/m-snap[i*3]);
+      V[i*3+1]+=SMOOTH*(sy/m-snap[i*3+1]);
+      V[i*3+2]+=SMOOTH*(sz/m-snap[i*3+2]);
+    }
+  }
+  solveIter++;
+  return {area, res:maxg};
+}
+function addGrad(g,i,nx,ny,nz,ex,ey,ez){
+  g[i*3]+=0.5*(ny*ez-nz*ey);
+  g[i*3+1]+=0.5*(nz*ex-nx*ez);
+  g[i*3+2]+=0.5*(nx*ey-ny*ex);
+}
+
+/* ============================================================
+   THREE.JS SCENE
+============================================================ */
+const stage=document.getElementById('stage');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+stage.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(42,1,0.01,200);
+scene.add(new THREE.AmbientLight(0x4a6678,0.9));
+const d1=new THREE.DirectionalLight(0xffffff,0.9);d1.position.set(4,8,5);scene.add(d1);
+const d2=new THREE.DirectionalLight(0x2dd4bf,0.4);d2.position.set(-5,-3,-4);scene.add(d2);
+
+let surfMesh=null, wireMesh=null, mastGroup=null, bndMesh=null;
+const surfMat=new THREE.MeshStandardMaterial({side:THREE.DoubleSide,vertexColors:true,metalness:0.1,roughness:0.45,transparent:true,opacity:0.9});
+const wireMat=new THREE.LineBasicMaterial({color:0x8fe9df,transparent:true,opacity:0.2});
+const bndMat=new THREE.LineBasicMaterial({color:0x2dd4bf});
+
+function buildThreeMeshes(){
+  if(surfMesh)scene.remove(surfMesh);
+  if(wireMesh)scene.remove(wireMesh);
+  if(mastGroup)scene.remove(mastGroup);
+  if(bndMesh)scene.remove(bndMesh);
+
+  const n=N*N;
+  const pos=new Float32Array(n*3);
+  const col=new Float32Array(n*3);
+  for(let i=0;i<n*3;i++) pos[i]=V[i];
+
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const idxFlat=[];for(const [a,b,c]of tris)idxFlat.push(a,b,c);
+  geo.setIndex(idxFlat);
+  geo.computeVertexNormals();
+  surfMesh=new THREE.Mesh(geo,surfMat);
+  scene.add(surfMesh);
+
+  const wg=new THREE.BufferGeometry();
+  wg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(V),3));
+  wg.setIndex(edgeSegs);
+  wireMesh=new THREE.LineSegments(wg,wireMat);
+  scene.add(wireMesh);
+
+  buildBoundaryLine();
+  buildMastObjects();
+  recolor();
+}
+
+function buildBoundaryLine(){
+  if(bndMesh)scene.remove(bndMesh);
+  const pts=[];
+  // perimeter loop
+  for(let j=0;j<N;j++) pts.push(V[(0*N+j)*3],V[(0*N+j)*3+1],V[(0*N+j)*3+2]);
+  for(let i=0;i<N;i++) pts.push(V[(i*N+N-1)*3],V[(i*N+N-1)*3+1],V[(i*N+N-1)*3+2]);
+  for(let j=N-1;j>=0;j--) pts.push(V[((N-1)*N+j)*3],V[((N-1)*N+j)*3+1],V[((N-1)*N+j)*3+2]);
+  for(let i=N-1;i>=0;i--) pts.push(V[(i*N+0)*3],V[(i*N+0)*3+1],V[(i*N+0)*3+2]);
+  pts.push(V[0],V[1],V[2]);
+  const bg=new THREE.BufferGeometry();
+  bg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pts),3));
+  bndMesh=new THREE.Line(bg,bndMat);
+  scene.add(bndMesh);
+}
+
+function buildMastObjects(){
+  if(mastGroup)scene.remove(mastGroup);
+  mastGroup=new THREE.Group();
+  for(const m of masts){
+    const k=m.gi*N+m.gj;
+    const bx=V[k*3],by=V[k*3+1],bz=V[k*3+2];
+    const col=new THREE.Color(m.color);
+    // Vertical pole
+    const pts=new Float32Array([bx,0,bz, bx,by,bz]);
+    const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.BufferAttribute(pts,3));
+    const lm=new THREE.LineBasicMaterial({color:col});
+    mastGroup.add(new THREE.Line(lg,lm));
+    // Sphere at tip
+    const sg=new THREE.SphereGeometry(0.1,12,12);
+    const sm=new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:0.3});
+    const sphere=new THREE.Mesh(sg,sm);
+    sphere.position.set(bx,by,bz);
+    mastGroup.add(sphere);
+  }
+  scene.add(mastGroup);
+}
+
+function recolor(){
+  if(!surfMesh)return;
+  const col=surfMesh.geometry.getAttribute('color');
+  const pos=surfMesh.geometry.getAttribute('position');
+  let miny=1e9,maxy=-1e9;
+  for(let i=0;i<N*N;i++){const y=pos.getY(i);if(y<miny)miny=y;if(y>maxy)maxy=y;}
+  const yr=maxy-miny||1;
+  for(let i=0;i<N*N;i++){
+    const t=(pos.getY(i)-miny)/yr;
+    const r=t<.5?lerp(.04,.18,t*2):lerp(.18,.96,(t-.5)*2);
+    const g=t<.5?lerp(.42,.83,t*2):lerp(.83,.65,(t-.5)*2);
+    const b=t<.5?lerp(.38,.75,t*2):lerp(.75,.14,(t-.5)*2);
+    col.setXYZ(i,r,g,b);
+  }
+  col.needsUpdate=true;
+}
+function lerp(a,b,t){return a+(b-a)*t;}
+
+function pushPositions(){
+  if(!surfMesh)return;
+  const p=surfMesh.geometry.getAttribute('position');
+  for(let i=0;i<N*N;i++){p.setXYZ(i,V[i*3],V[i*3+1],V[i*3+2]);}
+  p.needsUpdate=true;
+  surfMesh.geometry.computeVertexNormals();
+  const wp=wireMesh.geometry.getAttribute('position');
+  for(let i=0;i<N*N;i++){wp.setXYZ(i,V[i*3],V[i*3+1],V[i*3+2]);}
+  wp.needsUpdate=true;
+  buildBoundaryLine();
+  buildMastObjects();
+  recolor();
+}
+
+/* ============================================================
+   CAMERA ORBIT
+============================================================ */
+let camR=10,camTh=0.7,camPhi=0.9,target=new THREE.Vector3(0,0.5,0);
+let dragging=false,lastX=0,lastY=0;
+function placeCam(){
+  camera.position.set(
+    target.x+camR*Math.sin(camPhi)*Math.cos(camTh),
+    target.y+camR*Math.cos(camPhi),
+    target.z+camR*Math.sin(camPhi)*Math.sin(camTh));
+  camera.lookAt(target);
+}
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;});
+addEventListener('pointerup',()=>dragging=false);
+addEventListener('pointermove',e=>{
+  if(!dragging)return;
+  camTh-=(e.clientX-lastX)*0.008;
+  camPhi=Math.max(0.15,Math.min(1.9,camPhi-(e.clientY-lastY)*0.008));
+  lastX=e.clientX;lastY=e.clientY;placeCam();
+});
+renderer.domElement.addEventListener('wheel',e=>{
+  e.preventDefault();
+  camR=Math.max(3,Math.min(30,camR*(1+Math.sign(e.deltaY)*0.1)));
+  placeCam();
+},{passive:false});
+
+function resize(){
+  const w=stage.clientWidth,h=stage.clientHeight;
+  renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();
+}
+addEventListener('resize',resize);
+
+/* ============================================================
+   2D PLAN CANVAS
+============================================================ */
+const planCanvas=document.getElementById('plan');
+const PW=planCanvas.width, PH=planCanvas.height;
+const ctx=planCanvas.getContext('2d');
+const MARGIN=20;
+
+function worldToCanvas(wx,wz){
+  return [
+    MARGIN + (wx+HALF)/(2*HALF)*(PW-2*MARGIN),
+    MARGIN + (wz+HALF)/(2*HALF)*(PH-2*MARGIN)
+  ];
+}
+function canvasToWorld(cx,cy){
+  return [
+    (cx-MARGIN)/(PW-2*MARGIN)*2*HALF - HALF,
+    (cy-MARGIN)/(PH-2*MARGIN)*2*HALF - HALF
+  ];
+}
+function worldToGrid(wx,wz){
+  const gi=Math.round((wz+HALF)/(2*HALF)*(N-1));
+  const gj=Math.round((wx+HALF)/(2*HALF)*(N-1));
+  return [Math.max(1,Math.min(N-2,gi)), Math.max(1,Math.min(N-2,gj))];
+}
+
+function drawPlan(){
+  ctx.clearRect(0,0,PW,PH);
+  // Background
+  ctx.fillStyle='#0a131d';
+  ctx.fillRect(0,0,PW,PH);
+  // Grid dots
+  for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+    const [cx,cy]=worldToCanvas(-HALF+j*STEP,-HALF+i*STEP);
+    const isBnd=(i===0||i===N-1||j===0||j===N-1);
+    ctx.beginPath();
+    ctx.arc(cx,cy,isBnd?2:1.5,0,2*Math.PI);
+    ctx.fillStyle=isBnd?'rgba(22,192,176,.6)':'rgba(120,150,170,.3)';
+    ctx.fill();
+  }
+  // Boundary rect
+  const [x0,y0]=worldToCanvas(-HALF,-HALF);
+  const [x1,y1]=worldToCanvas(HALF,HALF);
+  ctx.strokeStyle='rgba(22,192,176,.4)';
+  ctx.lineWidth=1;
+  ctx.strokeRect(x0,y0,x1-x0,y1-y0);
+  // Masts
+  masts.forEach((m,idx)=>{
+    const [cx,cy]=worldToCanvas(m.cx,m.cz);
+    const sel=(idx===selectedMast);
+    // glow ring if selected
+    if(sel){
+      ctx.beginPath();ctx.arc(cx,cy,10,0,2*Math.PI);
+      ctx.strokeStyle=m.color;ctx.lineWidth=1.5;ctx.stroke();
+    }
+    // fill circle
+    ctx.beginPath();ctx.arc(cx,cy,7,0,2*Math.PI);
+    ctx.fillStyle=m.color;ctx.fill();
+    // height label
+    ctx.fillStyle='#fff';ctx.font='bold 9px monospace';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(m.h.toFixed(1),cx,cy);
+  });
+}
+
+function mastAt(cx,cy){
+  for(let i=masts.length-1;i>=0;i--){
+    const [mx,my]=worldToCanvas(masts[i].cx,masts[i].cz);
+    if(Math.hypot(cx-mx,cy-my)<10) return i;
+  }
+  return -1;
+}
+
+planCanvas.addEventListener('click',e=>{
+  const rect=planCanvas.getBoundingClientRect();
+  const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
+  const hit=mastAt(cx,cy);
+  if(hit>=0){
+    selectedMast=hit;
+    const m=masts[hit];
+    const hSlider=document.getElementById('hSlider');
+    hSlider.disabled=false;
+    hSlider.value=m.h;
+    document.getElementById('hVal').textContent=m.h.toFixed(1);
+  } else {
+    const [wx,wz]=canvasToWorld(cx,cy);
+    if(Math.abs(wx)>HALF-STEP*0.5||Math.abs(wz)>HALF-STEP*0.5) return;
+    const [gi,gj]=worldToGrid(wx,wz);
+    const actualX=-HALF+gj*STEP, actualZ=-HALF+gi*STEP;
+    const h=parseFloat(document.getElementById('hSlider').value)||2.0;
+    masts.push({cx:actualX,cz:actualZ,h,gi,gj,color:MAST_COLORS[masts.length%MAST_COLORS.length]});
+    selectedMast=masts.length-1;
+    document.getElementById('hSlider').disabled=false;
+    applyMastsToGrid();
+  }
+  drawPlan(); updateMastList();
+});
+
+planCanvas.addEventListener('contextmenu',e=>{
+  e.preventDefault();
+  const rect=planCanvas.getBoundingClientRect();
+  const hit=mastAt(e.clientX-rect.left,e.clientY-rect.top);
+  if(hit>=0){masts.splice(hit,1);selectedMast=-1;applyMastsToGrid();drawPlan();updateMastList();}
+});
+
+document.getElementById('hSlider').addEventListener('input',function(){
+  const v=parseFloat(this.value);
+  document.getElementById('hVal').textContent=v.toFixed(1);
+  if(selectedMast>=0&&selectedMast<masts.length){
+    masts[selectedMast].h=v;
+    applyMastsToGrid(); drawPlan();
+  }
+});
+document.getElementById('bSlider').addEventListener('input',function(){
+  const v=parseFloat(this.value);
+  document.getElementById('bVal').textContent=v.toFixed(1);
+  applyMastsToGrid();
+});
+
+function applyMastsToGrid(){
+  const bh=parseFloat(document.getElementById('bSlider').value);
+  for(let k=0;k<N*N;k++){
+    fixed[k]=(k%N===0||k%N===N-1||Math.floor(k/N)===0||Math.floor(k/N)===N-1)?1:0;
+    if(fixed[k]) V[k*3+1]=bh;
+  }
+  for(const m of masts){
+    const k=m.gi*N+m.gj;
+    fixed[k]=2; V[k*3+1]=m.h;
+  }
+  pushPositions();
+}
+
+function updateMastList(){
+  const el=document.getElementById('mastList');
+  document.getElementById('sMasts').textContent=masts.length;
+  if(!masts.length){el.innerHTML='<div style="font-size:11px;color:var(--mut);padding:4px 8px;">No masts placed yet.</div>';return;}
+  el.innerHTML=masts.map((m,i)=>`
+    <div class="mast-item${i===selectedMast?' selected':''}" onclick="selectMast(${i})">
+      <span class="mast-dot" style="background:${m.color}"></span>
+      <span>Mast ${i+1}</span>
+      <span style="color:var(--mut);font-size:10px;">(${m.cx.toFixed(1)}, ${m.cz.toFixed(1)})</span>
+      <span style="color:#fff;font-weight:600;font-size:11px;">h=${m.h.toFixed(1)}</span>
+      <span class="mast-del" onclick="event.stopPropagation();removeMast(${i})">✕</span>
+    </div>`).join('');
+}
+function selectMast(i){
+  selectedMast=i;
+  document.getElementById('hSlider').disabled=false;
+  document.getElementById('hSlider').value=masts[i].h;
+  document.getElementById('hVal').textContent=masts[i].h.toFixed(1);
+  drawPlan();updateMastList();
+}
+function removeMast(i){
+  masts.splice(i,1);
+  if(selectedMast>=masts.length)selectedMast=-1;
+  applyMastsToGrid();drawPlan();updateMastList();
+}
+
+/* ============================================================
+   PRESETS
+============================================================ */
+function loadPreset(name){
+  masts=[];
+  if(name==='hypar'){
+    masts=[
+      {cx:-2,cz:-2,h:3.0,gi:Math.round((1)*N/(N-1+1)),gj:Math.round(1),color:MAST_COLORS[0]},
+      {cx: 2,cz: 2,h:3.0,gi:Math.round((N-2)),gj:Math.round(N-2),color:MAST_COLORS[1]},
+      {cx:-2,cz: 2,h:0.0,gi:Math.round((N-2)),gj:Math.round(1),color:MAST_COLORS[2]},
+      {cx: 2,cz:-2,h:0.0,gi:Math.round(1),gj:Math.round(N-2),color:MAST_COLORS[3]},
+    ];
+    const pts=[[-2,-2,3],[2,2,3],[-2,2,0],[2,-2,0]];
+    masts=pts.map(([cx,cz,h],i)=>{
+      const [gi,gj]=worldToGrid(cx,cz);
+      return{cx,cz,h,gi,gj,color:MAST_COLORS[i]};
+    });
+  } else if(name==='tent'){
+    const pts=[[-1,-1,3.5],[1,1,3.5],[0,0,2.5]];
+    masts=pts.map(([cx,cz,h],i)=>({cx,cz,h,...Object.fromEntries([['gi','gj'].map((_,k)=>worldToGrid(cx,cz)[k])].flat().map((v,k)=>[['gi','gj'][k],v])),color:MAST_COLORS[i]}));
+    masts=pts.map(([cx,cz,h],i)=>{const[gi,gj]=worldToGrid(cx,cz);return{cx,cz,h,gi,gj,color:MAST_COLORS[i]};});
+  } else if(name==='wave'){
+    const pts=[[-2,0,3],[0,0,1.5],[2,0,3]];
+    masts=pts.map(([cx,cz,h],i)=>{const[gi,gj]=worldToGrid(cx,cz);return{cx,cz,h,gi,gj,color:MAST_COLORS[i]};});
+  }
+  selectedMast=-1;
+  document.getElementById('hSlider').disabled=true;
+  applyMastsToGrid(); drawPlan(); updateMastList();
+  setStatus('idle','Masts placed — press Solve');
+}
+
+/* ============================================================
+   SOLVE / EXPORT
+============================================================ */
+function setStatus(kind,msg){
+  const el=document.getElementById('statusBar');
+  el.className='status-bar '+kind;
+  el.textContent=msg;
+}
+
+document.getElementById('solveBtn').addEventListener('click',()=>{
+  if(running){running=false;document.getElementById('solveBtn').textContent='▶ Solve';document.getElementById('solveBtn').classList.remove('running');return;}
+  running=true;
+  document.getElementById('solveBtn').textContent='⏸ Pause';
+  document.getElementById('solveBtn').classList.add('running');
+  setStatus('run','Solving…');
+});
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  running=false;
+  document.getElementById('solveBtn').textContent='▶ Solve';
+  document.getElementById('solveBtn').classList.remove('running');
+  initGrid();drawPlan();setStatus('idle','Mesh reset');
+  document.getElementById('sIter').textContent='0';
+  document.getElementById('sArea').textContent='—';
+  document.getElementById('sRes').textContent='—';
+});
+document.getElementById('clearBtn').addEventListener('click',()=>{
+  masts=[];selectedMast=-1;
+  document.getElementById('hSlider').disabled=true;
+  applyMastsToGrid();drawPlan();updateMastList();
+  setStatus('idle','Masts cleared');
+});
+document.getElementById('exportBtn').addEventListener('click',exportOBJ);
+
+function exportOBJ(){
+  let s='# minsurf form-finding export\n';
+  for(let i=0;i<N*N;i++) s+=`v ${V[i*3].toFixed(6)} ${V[i*3+1].toFixed(6)} ${V[i*3+2].toFixed(6)}\n`;
+  for(const [a,b,c] of tris) s+=`f ${a+1} ${b+1} ${c+1}\n`;
+  const blob=new Blob([s],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='tensile_surface.obj';
+  a.click();
+}
+
+/* ============================================================
+   RENDER LOOP
+============================================================ */
+function loop(){
+  requestAnimationFrame(loop);
+  if(running){
+    for(let s=0;s<4;s++){
+      const{area,res}=solverStep();
+      if(solveIter%4===0){
+        pushPositions();
+        document.getElementById('sArea').textContent=area.toFixed(4);
+        document.getElementById('sIter').textContent=solveIter;
+        document.getElementById('sRes').textContent=res.toExponential(2);
+        if(res<5e-4){
+          running=false;
+          document.getElementById('solveBtn').textContent='▶ Solve';
+          document.getElementById('solveBtn').classList.remove('running');
+          setStatus('ok',`Converged in ${solveIter} iterations`);
+        }
+      }
+    }
+  }
+  renderer.render(scene,camera);
+}
+
+/* ============================================================
+   BOOT
+============================================================ */
+resize(); placeCam();
+initGrid(); drawPlan(); updateMastList();
+loadPreset('hypar');
+loop();
+</script>
+</html>

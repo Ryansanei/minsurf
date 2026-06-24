@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TPMS Explorer — minsurf</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --night:#070d14;--panel:#0d1925;--panel2:#0a131d;
+  --line:rgba(120,150,170,.18);--teal:#16c0b0;--teal-br:#2dd4bf;
+  --gold:#f5a623;--txt:#dbe6ee;--mut:#93a4b2;--head:#fff;
+  --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{background:radial-gradient(120% 80% at 80% -10%,#122231 0%,#070d14 58%);color:var(--txt);font-family:var(--sans);overflow:hidden;}
+.app{display:flex;height:100vh;}
+.side{width:290px;flex:0 0 290px;height:100%;overflow-y:auto;background:linear-gradient(180deg,var(--panel),var(--panel2));border-right:1px solid var(--line);padding:22px 18px 40px;}
+.kick{color:var(--teal);font-weight:700;letter-spacing:.16em;font-size:10px;text-transform:uppercase;}
+h1{color:var(--head);font-size:20px;font-weight:800;line-height:1.2;margin:8px 0 4px;}
+.tag{color:var(--mut);font-size:11px;line-height:1.65;}
+.sec{margin-top:18px;}
+.sec>.label{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--teal-br);margin-bottom:9px;}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;}
+.ctl .name{font-size:12px;color:var(--txt);}
+.ctl .val{font:600 12px var(--sans);color:var(--teal-br);}
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:4px;background:rgba(120,150,170,.22);outline:none;margin-bottom:6px;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--teal);cursor:pointer;border:2px solid #0a131d;}
+.surf-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;}
+.sbtn{font:600 11px var(--sans);color:var(--mut);border:1px solid var(--line);border-radius:8px;padding:6px 11px;cursor:pointer;transition:all .15s;}
+.sbtn:hover{color:var(--txt);border-color:rgba(45,212,191,.4);}
+.sbtn.on{color:#fff;border-color:var(--teal);background:rgba(22,192,176,.14);}
+.toggles{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{font:600 11px var(--sans);color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:5px 11px;cursor:pointer;transition:all .15s;}
+.chip:hover{color:var(--txt);}
+.chip.on{color:#fff;border-color:var(--teal);background:rgba(22,192,176,.12);}
+.stats{margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+.stat{display:flex;justify-content:space-between;padding:8px 13px;font-size:12px;border-bottom:1px solid var(--line);}
+.stat:last-child{border-bottom:none;}
+.stat .k{color:var(--mut);}.stat .v{color:#fff;font-weight:600;}
+.note{margin-top:12px;padding:10px 13px;border-radius:10px;font-size:11px;line-height:1.7;color:var(--mut);border:1px solid var(--line);background:rgba(255,255,255,.02);}
+.note b{color:var(--teal-br);}
+.code{font-family:monospace;margin-top:10px;padding:9px 12px;border-radius:8px;font-size:11px;color:#c4e8e4;background:rgba(22,192,176,.07);border:1px solid rgba(22,192,176,.18);line-height:1.7;}
+.stage{flex:1;position:relative;}
+canvas{display:block;}
+.hud{position:absolute;left:14px;bottom:14px;font-size:11px;color:var(--mut);background:rgba(7,13,20,.55);padding:6px 11px;border-radius:7px;border:1px solid var(--line);}
+.label-surf{position:absolute;top:14px;right:14px;font-size:11px;color:var(--teal-br);background:rgba(7,13,20,.55);padding:6px 11px;border-radius:7px;border:1px solid var(--line);font-family:monospace;}
+</style>
+
+<div class="app">
+<aside class="side">
+  <div class="kick">Minimal Surfaces · TPMS</div>
+  <h1>TPMS Explorer</h1>
+  <div class="tag">Triply Periodic Minimal Surfaces — zero mean curvature, infinite in all three directions. Found in butterfly wings, sea urchin skeletons, and 3D-print infill.</div>
+
+  <div class="sec">
+    <div class="label">Surface</div>
+    <div class="surf-btns">
+      <span class="sbtn on" data-s="0">Gyroid</span>
+      <span class="sbtn"    data-s="1">Schwartz P</span>
+      <span class="sbtn"    data-s="2">Diamond</span>
+      <span class="sbtn"    data-s="3">Neovius</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="label">Unit cells</div>
+    <div class="ctl">
+      <div class="row"><span class="name">cells per axis</span><span class="val" id="vCells">2</span></div>
+      <input type="range" id="sCells" min="1" max="4" step="1" value="2">
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="label">Offset level  (0 = minimal surface)</div>
+    <div class="ctl">
+      <div class="row"><span class="name">level</span><span class="val" id="vLevel">0.00</span></div>
+      <input type="range" id="sLevel" min="-1.2" max="1.2" step="0.02" value="0">
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="label">View</div>
+    <div class="toggles">
+      <span class="chip on" id="cAuto">Auto-rotate</span>
+      <span class="chip on" id="cClip">Show box</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span class="k">Surface</span><span class="v" id="sSurf">Gyroid</span></div>
+    <div class="stat"><span class="k">Mean curvature H</span><span class="v" style="color:var(--teal-br)">= 0</span></div>
+    <div class="stat"><span class="k">Gaussian curv. K</span><span class="v" style="color:var(--gold)">≤ 0</span></div>
+    <div class="stat"><span class="k">Topology</span><span class="v">triply periodic</span></div>
+  </div>
+
+  <div class="note">
+    <b>3D printing:</b> gyroids are the gold-standard infill for FDM printers — equal stiffness in all directions, minimal material.
+  </div>
+
+  <div class="code">
+# Python export<br>
+pip install minsurf scikit-image<br>
+minsurf gyroid --cells 2 --output gyroid.stl
+  </div>
+</aside>
+
+<div class="stage" id="stage">
+  <div class="hud">drag to rotate · scroll to zoom</div>
+  <div class="label-surf" id="lSurf">Gyroid  ·  2 cells</div>
+</div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ */
+/*  Raymarching TPMS via Three.js ShaderMaterial (full-screen quad)   */
+/* ------------------------------------------------------------------ */
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+
+// Full-screen quad geometry
+const geo = new THREE.PlaneGeometry(2,2);
+
+const uniforms = {
+  u_res:     {value: new THREE.Vector2(1,1)},
+  u_camPos:  {value: new THREE.Vector3(0,0,3.2)},
+  u_right:   {value: new THREE.Vector3(1,0,0)},
+  u_up:      {value: new THREE.Vector3(0,1,0)},
+  u_fwd:     {value: new THREE.Vector3(0,0,-1)},
+  u_surface: {value: 0.0},
+  u_scale:   {value: 4.0 * Math.PI},   // cells * 2π
+  u_level:   {value: 0.0},
+  u_boxVis:  {value: 1.0},
+};
+
+const vertSrc = `
+varying vec2 vUv;
+void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}
+`;
+
+const fragSrc = `
+precision highp float;
+varying vec2 vUv;
+uniform vec2  u_res;
+uniform vec3  u_camPos;
+uniform vec3  u_right, u_up, u_fwd;
+uniform float u_surface;
+uniform float u_scale;
+uniform float u_level;
+uniform float u_boxVis;
+#define PI 3.14159265358979
+
+float fGyroid(vec3 q){return sin(q.x)*cos(q.y)+sin(q.y)*cos(q.z)+sin(q.z)*cos(q.x);}
+float fSchP  (vec3 q){return cos(q.x)+cos(q.y)+cos(q.z);}
+float fDiam  (vec3 q){return sin(q.x)*sin(q.y)*sin(q.z)+sin(q.x)*cos(q.y)*cos(q.z)+cos(q.x)*sin(q.y)*cos(q.z)+cos(q.x)*cos(q.y)*sin(q.z);}
+float fNeov  (vec3 q){return 3.0*(cos(q.x)+cos(q.y)+cos(q.z))+4.0*cos(q.x)*cos(q.y)*cos(q.z);}
+
+float map(vec3 p){
+  // world box [-1,1]^3 → TPMS domain [0, scale]^3
+  vec3 q=(p*0.5+0.5)*u_scale;
+  float v;
+  if      (u_surface<0.5) v=fGyroid(q);
+  else if (u_surface<1.5) v=fSchP(q);
+  else if (u_surface<2.5) v=fDiam(q);
+  else                    v=fNeov(q);
+  return v-u_level;
+}
+
+vec3 norm(vec3 p){
+  float e=0.003;
+  return normalize(vec3(
+    map(p+vec3(e,0,0))-map(p-vec3(e,0,0)),
+    map(p+vec3(0,e,0))-map(p-vec3(0,e,0)),
+    map(p+vec3(0,0,e))-map(p-vec3(0,0,e))));
+}
+
+// Ray-box intersection for [-1,1]^3
+vec2 boxHit(vec3 ro,vec3 rd){
+  vec3 inv=1.0/rd;
+  vec3 t1=(-1.0-ro)*inv, t2=(1.0-ro)*inv;
+  vec3 ta=min(t1,t2),tb=max(t1,t2);
+  return vec2(max(max(ta.x,ta.y),ta.z),min(min(tb.x,tb.y),tb.z));
+}
+
+// Soft box edge glow
+float boxEdge(vec3 p){
+  vec3 a=abs(p);
+  vec3 d=a-0.98;
+  float e=length(max(d,0.0));
+  return smoothstep(0.04,0.0,e);
+}
+
+void main(){
+  float aspect=u_res.x/u_res.y;
+  vec2 uv=(vUv-0.5)*vec2(aspect,1.0);
+
+  vec3 rd=normalize(u_right*uv.x+u_up*uv.y+u_fwd*1.55);
+  vec3 ro=u_camPos;
+
+  vec2 box=boxHit(ro,rd);
+  float tN=max(box.x,0.001), tF=box.y;
+
+  // Background
+  vec3 bg=vec3(0.028,0.051,0.078)+length(uv)*0.04;
+
+  if(tN>tF){
+    gl_FragColor=vec4(bg,1.0);return;
+  }
+
+  // Fixed-step ray march inside the box
+  float t=tN+0.001;
+  float prevF=map(ro+t*rd);
+  bool hit=false;
+  float tHit=t;
+
+  for(int i=0;i<200;i++){
+    t+=0.011;
+    if(t>tF)break;
+    float currF=map(ro+t*rd);
+    if(prevF*currF<0.0){
+      // Bisect for accuracy
+      float t0=t-0.011,t1=t;
+      float f0=prevF;
+      for(int j=0;j<7;j++){
+        float tm=(t0+t1)*0.5;
+        float fm=map(ro+tm*rd);
+        if(f0*fm<0.0){t1=tm;}
+        else{t0=tm;f0=fm;}
+      }
+      tHit=(t0+t1)*0.5;
+      hit=true;
+      break;
+    }
+    prevF=currF;
+  }
+
+  if(!hit){
+    // box edge glow
+    vec3 col=bg;
+    if(u_boxVis>0.5){
+      vec3 bEnt=ro+tN*rd;
+      float eg=boxEdge(bEnt)*0.18;
+      col=mix(col,vec3(0.11,0.45,0.44),eg);
+    }
+    gl_FragColor=vec4(col,1.0);
+    return;
+  }
+
+  vec3 p=ro+tHit*rd;
+  vec3 n=norm(p);
+  if(dot(n,rd)>0.0)n=-n;  // face toward camera
+
+  // Lighting
+  vec3 L1=normalize(vec3(1.8,2.5,3.5));
+  vec3 L2=normalize(vec3(-2.0,-0.8,-2.5));
+  vec3 L3=normalize(vec3(0.0,1.0,0.0));
+  float d1=max(dot(n,L1),0.0);
+  float d2=max(dot(n,L2),0.0);
+  float d3=max(dot(n,L3),0.0)*0.25;
+  float spec=pow(max(dot(reflect(-L1,n),-rd),0.0),28.0)*0.55;
+
+  // Height-based colour: teal → bright teal → amber
+  float h=p.y*0.5+0.5;
+  vec3 teal  =vec3(0.04,0.42,0.38);
+  vec3 bteal =vec3(0.18,0.83,0.75);
+  vec3 amber =vec3(0.96,0.65,0.14);
+  vec3 col=(h<0.5)?mix(teal,bteal,h*2.0):mix(bteal,amber,(h-0.5)*2.0);
+
+  vec3 lit=col*(0.09+d1*0.62+d2*0.18+d3)+vec3(0.9,0.95,1.0)*spec;
+
+  // Soft fresnel rim darkening
+  float fres=pow(1.0-abs(dot(n,-rd)),2.5);
+  lit=mix(lit,lit*0.35,fres*0.55);
+
+  // Box edge overlay
+  float eg=u_boxVis>0.5?boxEdge(p)*0.25:0.0;
+  lit=mix(lit,vec3(0.15,0.55,0.52),eg);
+
+  gl_FragColor=vec4(clamp(lit,0.0,1.0),1.0);
+}
+`;
+
+const mat = new THREE.ShaderMaterial({
+  uniforms, vertexShader: vertSrc, fragmentShader: fragSrc,
+  depthTest:false, depthWrite:false
+});
+const quad = new THREE.Mesh(geo, mat);
+scene.add(quad);
+
+/* ------------------------------------------------------------------ */
+/*  Camera orbit                                                        */
+/* ------------------------------------------------------------------ */
+let camR=3.2, camTh=0.6, camPhi=1.15;
+let dragging=false, lastX=0, lastY=0, autoRot=true;
+
+function placeCam(){
+  const pos = new THREE.Vector3(
+    camR*Math.sin(camPhi)*Math.cos(camTh),
+    camR*Math.cos(camPhi),
+    camR*Math.sin(camPhi)*Math.sin(camTh));
+  uniforms.u_camPos.value.copy(pos);
+
+  const fwd = pos.clone().normalize().negate();
+  const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0), fwd).normalize();
+  const up = new THREE.Vector3().crossVectors(fwd, right);
+  uniforms.u_right.value.copy(right);
+  uniforms.u_up.value.copy(up);
+  uniforms.u_fwd.value.copy(fwd);
+}
+
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;});
+addEventListener('pointerup',()=>dragging=false);
+addEventListener('pointermove',e=>{
+  if(!dragging)return;
+  camTh -= (e.clientX-lastX)*0.009;
+  camPhi = Math.max(0.08, Math.min(3.06, camPhi-(e.clientY-lastY)*0.009));
+  lastX=e.clientX; lastY=e.clientY; placeCam();
+});
+renderer.domElement.addEventListener('wheel',e=>{
+  e.preventDefault();
+  camR = Math.max(1.5, Math.min(9.0, camR*(1+Math.sign(e.deltaY)*0.08)));
+  placeCam();
+},{passive:false});
+
+/* ------------------------------------------------------------------ */
+/*  UI                                                                  */
+/* ------------------------------------------------------------------ */
+const NAMES = ['Gyroid','Schwartz P','Diamond','Neovius'];
+const EQNS  = [
+  'sin x cos y + sin y cos z + sin z cos x = 0',
+  'cos x + cos y + cos z = 0',
+  'sin x sin y sin z + sin x cos y cos z + cos x sin y cos z + cos x cos y sin z = 0',
+  '3(cos x + cos y + cos z) + 4 cos x cos y cos z = 0',
+];
+let curSurf=0, curCells=2;
+
+function updateLabel(){
+  document.getElementById('lSurf').textContent = `${NAMES[curSurf]}  ·  ${curCells} cells`;
+  document.getElementById('sSurf').textContent = NAMES[curSurf];
+}
+
+document.querySelectorAll('.sbtn').forEach(btn=>{
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('on'));
+    this.classList.add('on');
+    curSurf = parseInt(this.dataset.s);
+    uniforms.u_surface.value = curSurf;
+    updateLabel();
+  });
+});
+
+document.getElementById('sCells').addEventListener('input',function(){
+  curCells = parseInt(this.value);
+  document.getElementById('vCells').textContent = curCells;
+  uniforms.u_scale.value = curCells * 2 * Math.PI;
+  updateLabel();
+});
+
+document.getElementById('sLevel').addEventListener('input',function(){
+  const v = parseFloat(this.value);
+  document.getElementById('vLevel').textContent = v.toFixed(2);
+  uniforms.u_level.value = v;
+});
+
+document.getElementById('cAuto').addEventListener('click',function(){
+  autoRot = this.classList.toggle('on');
+});
+document.getElementById('cClip').addEventListener('click',function(){
+  const on = this.classList.toggle('on');
+  uniforms.u_boxVis.value = on ? 1.0 : 0.0;
+});
+
+/* ------------------------------------------------------------------ */
+/*  Resize + render loop                                                */
+/* ------------------------------------------------------------------ */
+function resize(){
+  const w=stage.clientWidth, h=stage.clientHeight;
+  renderer.setSize(w,h);
+  uniforms.u_res.value.set(w*Math.min(devicePixelRatio,1.5),h*Math.min(devicePixelRatio,1.5));
+}
+addEventListener('resize',resize);
+
+function loop(){
+  requestAnimationFrame(loop);
+  if(autoRot){ camTh += 0.005; placeCam(); }
+  renderer.render(scene,camera);
+}
+
+resize(); placeCam(); updateLabel(); loop();
+</script>
+</html>

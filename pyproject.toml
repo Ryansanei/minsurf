@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=67", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "minsurf"
+version = "0.1.0"
+description = "Discrete minimal surface / soap-film toolkit: cotangent Laplacian flow, exact validation, 3D-print export"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Ryan Sanei", email = "ryan.sanei@gmail.com" }]
+requires-python = ">=3.10"
+keywords = ["minimal-surfaces", "differential-geometry", "mesh", "soap-film", "cotangent-laplacian"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "matplotlib>=3.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.1.0",
+    "pre-commit>=3.5",
+    "build>=1.0",
+]
+notebook = [
+    "jupyter>=1.0",
+    "ipykernel>=6.0",
+]
+tpms = [
+    "scikit-image>=0.19",
+]
+all = [
+    "scikit-image>=0.19",
+    "jupyter>=1.0",
+    "ipykernel>=6.0",
+]
+
+[project.scripts]
+minsurf = "minsurf.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ryansan/minsurf"
+Repository = "https://github.com/ryansan/minsurf"
+Issues = "https://github.com/ryansan/minsurf/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+src = ["src"]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ANN001", "ANN201", "ANN202"]
+ignore = ["E501", "ANN001", "ANN201", "ANN202", "B008", "SIM108"]
+per-file-ignores = {"tests/**" = ["ANN", "S101"]}
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+filterwarnings = ["ignore::DeprecationWarning"]
