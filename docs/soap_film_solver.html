@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soap-Film Solver</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<style>
+  :root{
+    --night:#070d14; --panel:#0d1925; --panel2:#0a131d; --line:rgba(120,150,170,.18);
+    --teal:#16c0b0; --teal-br:#2dd4bf; --gold:#f5a623; --red:#f06a6a;
+    --txt:#dbe6ee; --mut:#93a4b2; --head:#fff;
+    --sans: system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{background:radial-gradient(120% 80% at 80% -10%, #122231 0%, #070d14 58%);
+       color:var(--txt); font-family:var(--sans); overflow:hidden;}
+  .app{display:flex; height:100vh;}
+  /* ---- control panel ---- */
+  .side{width:340px; flex:0 0 340px; height:100%; overflow-y:auto;
+        background:linear-gradient(180deg,var(--panel),var(--panel2));
+        border-right:1px solid var(--line); padding:24px 22px 40px;}
+  .kick{color:var(--teal); font-weight:700; letter-spacing:.16em; font-size:11px; text-transform:uppercase;}
+  h1{color:var(--head); font-size:23px; font-weight:800; line-height:1.15; margin:8px 0 4px;}
+  .tag{color:var(--mut); font-size:12.5px; line-height:1.5;}
+  .sec{margin-top:22px;}
+  .sec > .label{font-size:11px; font-weight:700; letter-spacing:.13em; text-transform:uppercase;
+        color:var(--teal-br); margin-bottom:10px;}
+  .presets{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .pbtn{font:600 13px var(--sans); color:var(--txt); background:rgba(255,255,255,.03);
+        border:1px solid var(--line); border-radius:10px; padding:10px 8px; cursor:pointer;
+        text-align:center; transition:.15s;}
+  .pbtn:hover{border-color:var(--teal); color:#fff;}
+  .pbtn.on{background:rgba(22,192,176,.14); border-color:var(--teal); color:#fff;}
+  .ctl{margin-top:14px;}
+  .ctl .row{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;}
+  .ctl .name{font-size:13px; color:var(--txt);}
+  .ctl .val{font:600 13px var(--sans); color:var(--teal-br);}
+  input[type=range]{-webkit-appearance:none; width:100%; height:4px; border-radius:4px;
+        background:rgba(120,150,170,.25); outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:16px; height:16px;
+        border-radius:50%; background:var(--teal); cursor:pointer; border:2px solid #0a131d;}
+  input[type=range]::-moz-range-thumb{width:16px; height:16px; border-radius:50%;
+        background:var(--teal); cursor:pointer; border:2px solid #0a131d;}
+  .btns{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;}
+  .btn{font:700 13px var(--sans); border-radius:10px; padding:11px 8px; cursor:pointer;
+       border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--txt);}
+  .btn.primary{grid-column:1 / -1; background:var(--teal); color:#06222b; border-color:var(--teal);}
+  .btn.primary.running{background:var(--gold); border-color:var(--gold); color:#3a2500;}
+  .btn:hover{border-color:var(--teal);}
+  .toggles{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{font:600 12px var(--sans); color:var(--mut); border:1px solid var(--line);
+        border-radius:999px; padding:6px 12px; cursor:pointer;}
+  .chip.on{color:#fff; border-color:var(--teal); background:rgba(22,192,176,.12);}
+  .stats{margin-top:14px; border:1px solid var(--line); border-radius:12px; overflow:hidden;}
+  .stat{display:flex; justify-content:space-between; padding:9px 14px; font-size:13px;
+        border-bottom:1px solid var(--line);}
+  .stat:last-child{border-bottom:none;}
+  .stat .k{color:var(--mut);} .stat .v{color:#fff; font-weight:600;}
+  .stat .v .katex{font-size:.95em;}
+  .status{margin-top:14px; padding:12px 14px; border-radius:12px; font-size:13px; line-height:1.5;
+        border:1px solid var(--line); background:rgba(255,255,255,.02);}
+  .status b{font-weight:700;}
+  .status.ok{border-color:rgba(22,192,176,.5); background:rgba(22,192,176,.08);}
+  .status.ok b{color:var(--teal-br);}
+  .status.bad{border-color:rgba(240,106,106,.5); background:rgba(240,106,106,.08);}
+  .status.bad b{color:var(--red);}
+  .foot{margin-top:18px; font-size:11.5px; color:var(--mut); line-height:1.7;}
+  .foot .katex{font-size:1em;}
+  /* ---- stage ---- */
+  .stage{flex:1; position:relative;}
+  canvas{display:block;}
+  .hud{position:absolute; left:18px; bottom:16px; font-size:12px; color:var(--mut);
+       background:rgba(7,13,20,.5); padding:7px 12px; border-radius:8px; border:1px solid var(--line);}
+  .cbar{position:absolute; right:18px; bottom:16px; display:flex; align-items:center; gap:10px;
+        font-size:11px; color:var(--mut); background:rgba(7,13,20,.5); padding:8px 12px;
+        border-radius:8px; border:1px solid var(--line);}
+  .ramp{width:120px; height:8px; border-radius:4px;
+        background:linear-gradient(90deg,#0a6b62,#2dd4bf,#f5a623);}
+  @media(max-width:780px){
+    .app{flex-direction:column;} .side{width:100%; flex-basis:auto; height:auto; max-height:46vh;
+        border-right:none; border-bottom:1px solid var(--line);}
+    .stage{flex:1;}
+  }
+</style>
+
+<div class="app">
+  <aside class="side">
+    <div class="kick">Differential Geometry · Interactive</div>
+    <h1>Soap-Film Solver</h1>
+    <div class="tag">Pick a wire frame. The mesh descends the area gradient until it settles into the equilibrium film — a discrete soap film with \(H\to0\).</div>
+
+    <div class="sec">
+      <div class="label">Boundary frame</div>
+      <div class="presets">
+        <div class="pbtn" data-preset="saddle">Saddle ring</div>
+        <div class="pbtn" data-preset="wavy">Wavy ring</div>
+        <div class="pbtn" data-preset="rings">Two rings</div>
+        <div class="pbtn" data-preset="flat">Flat disk</div>
+      </div>
+    </div>
+
+    <div class="sec" id="paramBox">
+      <div class="label">Frame parameters</div>
+      <div class="ctl" id="ctlAmp">
+        <div class="row"><span class="name">Amplitude</span><span class="val" id="ampVal">0.55</span></div>
+        <input type="range" id="amp" min="0" max="1.2" step="0.01" value="0.55">
+      </div>
+      <div class="ctl" id="ctlSep" style="display:none">
+        <div class="row"><span class="name">Ring separation ÷ radius</span><span class="val" id="sepVal">1.00</span></div>
+        <input type="range" id="sep" min="0.30" max="2.20" step="0.01" value="1.00">
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="label">Solver</div>
+      <div class="btns">
+        <button class="btn primary" id="run">▶ Relax</button>
+        <button class="btn" id="reset">⟳ Reset</button>
+        <button class="btn" id="step">Step ×20</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="label">View</div>
+      <div class="toggles">
+        <span class="chip on" id="tWire">Wireframe</span>
+        <span class="chip on" id="tCurv">Color by |H|</span>
+        <span class="chip on" id="tSurf">Surface</span>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><span class="k">Surface area</span><span class="v" id="sArea">—</span></div>
+      <div class="stat"><span class="k">Iterations</span><span class="v" id="sIter">0</span></div>
+      <div class="stat"><span class="k">Residual ‖∇A‖<sub>max</sub></span><span class="v" id="sRes">—</span></div>
+    </div>
+
+    <div class="status ok" id="status">Choose a frame and press <b>Relax</b>.</div>
+
+    <div class="foot">
+      Update rule per vertex: \( v_i^{(n+1)} = v_i^{(n)} - \eta\,\nabla_{v_i}A \). The boundary stays fixed;
+      free vertices flow down the area gradient (discrete mean-curvature flow). The two-ring frame loses its
+      catenoid when separation\(/\)radius \(\gtrsim 1.3255\).
+    </div>
+  </aside>
+
+  <div class="stage" id="stage">
+    <div class="hud">drag to rotate · scroll to zoom</div>
+    <div class="cbar"><span>min |H|</span><div class="ramp"></div><span>max</span></div>
+  </div>
+</div>
+
+<script>
+/* ---------------- three.js scene ---------------- */
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
+
+scene.add(new THREE.AmbientLight(0x4a6678, 0.9));
+const d1 = new THREE.DirectionalLight(0xffffff, 0.9); d1.position.set(3,4,5); scene.add(d1);
+const d2 = new THREE.DirectionalLight(0x2dd4bf, 0.5); d2.position.set(-4,-2,-3); scene.add(d2);
+const p1 = new THREE.PointLight(0xff5fa0, 0.35, 30); p1.position.set(-3,3,-2); scene.add(p1);
+
+const surfMat = new THREE.MeshStandardMaterial({
+  color:0x1aa596, metalness:0.15, roughness:0.4, side:THREE.DoubleSide,
+  transparent:true, opacity:0.92, vertexColors:true, flatShading:false});
+const wireMat = new THREE.LineBasicMaterial({color:0x8fe9df, transparent:true, opacity:0.28});
+const bMat = new THREE.LineBasicMaterial({color:0x2dd4bf, linewidth:2});
+
+let surfMesh=null, wireMesh=null, bndMesh=null, disksGroup=null;
+
+/* ---------------- camera orbit ---------------- */
+let camR=4.2, camTh=0.9, camPhi=1.15, target=new THREE.Vector3(0,0,0);
+function placeCam(){
+  camera.position.set(
+    target.x + camR*Math.sin(camPhi)*Math.cos(camTh),
+    target.y + camR*Math.cos(camPhi),
+    target.z + camR*Math.sin(camPhi)*Math.sin(camTh));
+  camera.lookAt(target);
+}
+let dragging=false, lastX=0, lastY=0;
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;});
+addEventListener('pointerup',()=>dragging=false);
+addEventListener('pointermove',e=>{
+  if(!dragging)return;
+  camTh -= (e.clientX-lastX)*0.008;
+  camPhi = Math.max(0.15, Math.min(3.0, camPhi - (e.clientY-lastY)*0.008));
+  lastX=e.clientX; lastY=e.clientY; placeCam();
+});
+renderer.domElement.addEventListener('wheel',e=>{
+  e.preventDefault();
+  camR = Math.max(1.6, Math.min(12, camR*(1+Math.sign(e.deltaY)*0.08)));
+  placeCam();
+},{passive:false});
+
+function resize(){
+  const w=stage.clientWidth, h=stage.clientHeight;
+  renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+addEventListener('resize',resize);
+
+/* ---------------- mesh state ---------------- */
+let V=null;            // Float64Array xyz (live, double precision)
+let fixed=null;        // Uint8Array boundary mask
+let tris=[];           // [[i,j,k],...]
+let nbr=[];            // adjacency arrays
+let edgeIdx=null;      // Uint32Array for wireframe
+let bndLoop=[];        // boundary vertex order for the glowing frame
+let iter=0, running=false, collapsed=false;
+let preset='saddle';
+let gradLen=null;      // per-vertex |∇A| for coloring
+
+const NT_DISK=46, NR_DISK=16, NT_TUBE=46, NZ_TUBE=22;
+const MAXMOVE=0.014, ETA=0.20, SMOOTH=0.06;
+const CRIT=1.3255;
+
+/* ---------- builders ---------- */
+function reGeom(nVerts){
+  V=new Float64Array(nVerts*3); fixed=new Uint8Array(nVerts);
+  tris=[]; bndLoop=[]; gradLen=new Float64Array(nVerts);
+}
+function setV(i,x,y,z){V[i*3]=x;V[i*3+1]=y;V[i*3+2]=z;}
+
+function buildDisk(zfun){
+  const nt=NT_DISK, nr=NR_DISK;
+  reGeom(1 + nr*nt);
+  setV(0,0,0,0);                       // center
+  const idx=(r,a)=>1+(r-1)*nt+((a%nt+nt)%nt);
+  for(let r=1;r<=nr;r++){
+    const t=r/nr;
+    for(let a=0;a<nt;a++){
+      const th=2*Math.PI*a/nt;
+      if(r===nr){ setV(idx(r,a), Math.cos(th), Math.sin(th), zfun(th)); fixed[idx(r,a)]=1; bndLoop.push(idx(r,a)); }
+      else      { setV(idx(r,a), t*Math.cos(th), t*Math.sin(th), 0); }
+    }
+  }
+  for(let a=0;a<nt;a++) tris.push([0, idx(1,a), idx(1,a+1)]);
+  for(let r=1;r<nr;r++) for(let a=0;a<nt;a++)
+    { tris.push([idx(r,a),idx(r,a+1),idx(r+1,a+1)]); tris.push([idx(r,a),idx(r+1,a+1),idx(r+1,a)]); }
+  finishBuild();
+}
+
+function buildTube(sep){
+  const nt=NT_TUBE, nz=NZ_TUBE, R=1, zTop=sep/2, zBot=-sep/2;
+  reGeom((nz+1)*nt);
+  const idx=(row,a)=>row*nt+((a%nt+nt)%nt);
+  for(let row=0;row<=nz;row++){
+    const s=row/nz, z=zBot+s*(zTop-zBot);
+    for(let a=0;a<nt;a++){
+      const th=2*Math.PI*a/nt;
+      setV(idx(row,a), R*Math.cos(th), R*Math.sin(th), z);
+      if(row===0||row===nz){ fixed[idx(row,a)]=1; }
+    }
+  }
+  for(let a=0;a<nt;a++) bndLoop.push(idx(nz,a));      // top ring as glowing frame
+  for(let row=0;row<nz;row++) for(let a=0;a<nt;a++)
+    { tris.push([idx(row,a),idx(row,a+1),idx(row+1,a+1)]); tris.push([idx(row,a),idx(row+1,a+1),idx(row+1,a)]); }
+  finishBuild();
+}
+
+function finishBuild(){
+  const n=V.length/3;
+  // adjacency
+  nbr=Array.from({length:n},()=>new Set());
+  for(const [i,j,k] of tris){ nbr[i].add(j);nbr[i].add(k);nbr[j].add(i);nbr[j].add(k);nbr[k].add(i);nbr[k].add(j); }
+  nbr=nbr.map(s=>Array.from(s));
+  // unique edges for wireframe
+  const eset=new Set(), elist=[];
+  for(const [i,j,k] of tris){ for(const [a,b] of [[i,j],[j,k],[k,i]]){
+    const key=a<b?a+'_'+b:b+'_'+a; if(!eset.has(key)){eset.add(key); elist.push(a,b);} } }
+  edgeIdx=new Uint32Array(elist);
+  iter=0; collapsed=false;
+  buildMeshes();
+}
+
+/* ---------- three meshes ---------- */
+function buildMeshes(){
+  [surfMesh,wireMesh,bndMesh,disksGroup].forEach(m=>{ if(m) scene.remove(m); });
+  disksGroup=null;
+  const n=V.length/3;
+  const pos=new Float32Array(V);
+  const col=new Float32Array(n*3);
+  const sg=new THREE.BufferGeometry();
+  sg.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  sg.setAttribute('color', new THREE.BufferAttribute(col,3));
+  sg.setIndex(new THREE.BufferAttribute(new Uint32Array(tris.flat()),1));
+  sg.computeVertexNormals();
+  surfMesh=new THREE.Mesh(sg,surfMat); scene.add(surfMesh);
+
+  const wg=new THREE.BufferGeometry();
+  wg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(V),3));
+  wg.setIndex(new THREE.BufferAttribute(edgeIdx,1));
+  wireMesh=new THREE.LineSegments(wg,wireMat); scene.add(wireMesh);
+
+  rebuildBoundary();
+  syncToggles();
+  recolor(); pushPositions();
+}
+function rebuildBoundary(){
+  if(bndMesh) scene.remove(bndMesh);
+  const pts=[]; for(const vi of bndLoop) pts.push(V[vi*3],V[vi*3+1],V[vi*3+2]);
+  // close loop
+  if(bndLoop.length){ pts.push(V[bndLoop[0]*3],V[bndLoop[0]*3+1],V[bndLoop[0]*3+2]); }
+  const bg=new THREE.BufferGeometry();
+  bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts),3));
+  bndMesh=new THREE.Line(bg,bMat); scene.add(bndMesh);
+  if(preset==='rings'){ // second ring at bottom
+    const pts2=[]; const nt=NT_TUBE;
+    for(let a=0;a<=nt;a++){const vi=(a%nt); pts2.push(V[vi*3],V[vi*3+1],V[vi*3+2]);}
+    const bg2=new THREE.BufferGeometry();
+    bg2.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts2),3));
+    const b2=new THREE.Line(bg2,bMat); bndMesh.add(b2);
+  }
+}
+
+/* ---------- solver ---------- */
+function areaStep(){
+  const n=V.length/3;
+  const g=new Float64Array(n*3);
+  let area=0;
+  const ax=[0,0,0],bx=[0,0,0];
+  for(const [i,j,k] of tris){
+    const ix=i*3,jx=j*3,kx=k*3;
+    const e1x=V[jx]-V[ix], e1y=V[jx+1]-V[ix+1], e1z=V[jx+2]-V[ix+2];
+    const e2x=V[kx]-V[ix], e2y=V[kx+1]-V[ix+1], e2z=V[kx+2]-V[ix+2];
+    let cx=e1y*e2z-e1z*e2y, cy=e1z*e2x-e1x*e2z, cz=e1x*e2y-e1y*e2x;
+    const len=Math.hypot(cx,cy,cz); if(len<1e-12) continue;
+    area+=0.5*len;
+    const nx=cx/len, ny=cy/len, nz=cz/len;
+    // gradient at each vertex = 0.5 * n × (opposite edge)
+    addGrad(g,i, nx,ny,nz, V[kx]-V[jx],V[kx+1]-V[jx+1],V[kx+2]-V[jx+2]); // opp i = pk-pj
+    addGrad(g,j, nx,ny,nz, V[ix]-V[kx],V[ix+1]-V[kx+1],V[ix+2]-V[kx+2]); // opp j = pi-pk
+    addGrad(g,k, nx,ny,nz, V[jx]-V[ix],V[jx+1]-V[ix+1],V[jx+2]-V[ix+2]); // opp k = pj-pi
+  }
+  // residual + step
+  let maxg=1e-12;
+  for(let i=0;i<n;i++){ if(fixed[i]){gradLen[i]=0;continue;}
+    const L=Math.hypot(g[i*3],g[i*3+1],g[i*3+2]); gradLen[i]=L; if(L>maxg)maxg=L; }
+  const sc=Math.min(ETA, MAXMOVE/maxg);
+  for(let i=0;i<n;i++){ if(fixed[i])continue;
+    V[i*3]-=sc*g[i*3]; V[i*3+1]-=sc*g[i*3+1]; V[i*3+2]-=sc*g[i*3+2]; }
+  // light umbrella smoothing keeps triangles healthy
+  if(SMOOTH>0){
+    const snap=Float64Array.from(V);
+    for(let i=0;i<n;i++){ if(fixed[i])continue; const nb=nbr[i]; if(!nb.length)continue;
+      let sx=0,sy=0,sz=0; for(const j of nb){sx+=snap[j*3];sy+=snap[j*3+1];sz+=snap[j*3+2];}
+      const m=nb.length;
+      V[i*3]+=SMOOTH*(sx/m-snap[i*3]); V[i*3+1]+=SMOOTH*(sy/m-snap[i*3+1]); V[i*3+2]+=SMOOTH*(sz/m-snap[i*3+2]); }
+  }
+  iter++;
+  return {area, res:maxg};
+}
+function addGrad(g,i, nx,ny,nz, ex,ey,ez){
+  // 0.5 * (n × e)
+  g[i*3]   += 0.5*(ny*ez-nz*ey);
+  g[i*3+1] += 0.5*(nz*ex-nx*ez);
+  g[i*3+2] += 0.5*(nx*ey-ny*ex);
+}
+
+/* ---------- collapse detection (two rings) ---------- */
+function neckRadius(){
+  const nt=NT_TUBE, nz=NZ_TUBE; let mn=1e9;
+  for(let row=1;row<nz;row++){ let r=0; for(let a=0;a<nt;a++){const vi=row*nt+a; r+=Math.hypot(V[vi*3],V[vi*3+1]);} r/=nt; if(r<mn)mn=r; }
+  return mn;
+}
+function collapseToDisks(){
+  collapsed=true; running=false; updateRunBtn();
+  scene.remove(surfMesh); scene.remove(wireMesh); if(bndMesh) bndMesh.visible=true;
+  disksGroup=new THREE.Group();
+  const sep=parseFloat(sepEl.value);
+  const dm=new THREE.MeshStandardMaterial({color:0x1aa596, metalness:0.1, roughness:0.5,
+        side:THREE.DoubleSide, transparent:true, opacity:0.85});
+  for(const z of [sep/2,-sep/2]){
+    const cg=new THREE.CircleGeometry(1,NT_TUBE); cg.rotateX(-Math.PI/2); // disk in xy? circle is in xy by default
+    const disk=new THREE.Mesh(new THREE.CircleGeometry(1,NT_TUBE), dm.clone());
+    disk.position.z=z; scene.add(disk); disksGroup.add(disk);
+  }
+  scene.add(disksGroup);
+  setStatus('bad','<b>Collapsed to two disks.</b> Beyond the critical ratio the catenoid is unstable — the film snaps to the Goldschmidt (two-disk) solution. Separation÷radius = '+sep.toFixed(2)+' &gt; 1.3255.');
+}
+
+/* ---------- coloring ---------- */
+function lerp(a,b,t){return a+(b-a)*t;}
+function ramp(t){ // teal-deep → teal-bright → gold
+  t=Math.max(0,Math.min(1,t));
+  if(t<0.5){const u=t/0.5; return [lerp(.04,.18,u),lerp(.42,.83,u),lerp(.38,.75,u)];}
+  const u=(t-0.5)/0.5; return [lerp(.18,.96,u),lerp(.83,.65,u),lerp(.75,.14,u)];
+}
+function recolor(){
+  if(!surfMesh)return;
+  const col=surfMesh.geometry.getAttribute('color');
+  const n=V.length/3;
+  let mx=1e-9; if(showCurv){ for(let i=0;i<n;i++) if(gradLen[i]>mx)mx=gradLen[i]; }
+  for(let i=0;i<n;i++){
+    let c;
+    if(showCurv){ c=ramp(gradLen[i]/mx); }
+    else c=[0.10,0.65,0.59];
+    col.setXYZ(i,c[0],c[1],c[2]);
+  }
+  col.needsUpdate=true;
+}
+function pushPositions(){
+  if(surfMesh){ const p=surfMesh.geometry.getAttribute('position'); p.array.set(V); p.needsUpdate=true;
+    surfMesh.geometry.computeVertexNormals(); }
+  if(wireMesh){ const p=wireMesh.geometry.getAttribute('position'); p.array.set(V); p.needsUpdate=true; }
+}
+
+/* ---------- status / stats ---------- */
+function setStatus(kind,html){ const s=document.getElementById('status'); s.className='status '+kind; s.innerHTML=html; renderMath(s); }
+function fmt(x){ return x.toExponential(2); }
+function updateStats(area,res){
+  document.getElementById('sArea').textContent=area.toFixed(4);
+  document.getElementById('sIter').textContent=iter;
+  document.getElementById('sRes').textContent=res?fmt(res):'—';
+}
+function ringStatus(){
+  const sep=parseFloat(sepEl.value);
+  if(sep<=CRIT){
+    // solve 1 = a cosh((sep/2)/a) for largest a
+    let best=null; for(let a=0.05;a<5;a+=0.002){ if(a*Math.cosh((sep/2)/a)>=1){ best=a; break; } }
+    // refine: scan for largest root
+    let a1=null; for(let a=2.0;a>0.02;a-=0.002){ if(a*Math.cosh((sep/2)/a)<=1.0001){ a1=a; break; } }
+    const neck=a1?a1:best;
+    setStatus('ok','<b>Stable catenoid.</b> A neck exists. Separation÷radius = '+sep.toFixed(2)+' ≤ 1.3255. Predicted neck radius ≈ '+(neck?neck.toFixed(3):'—')+'.');
+  } else {
+    setStatus('bad','<b>No catenoid.</b> Separation÷radius = '+sep.toFixed(2)+' &gt; 1.3255 — the film will pinch and collapse to two disks. Press Relax to watch it happen.');
+  }
+}
+
+/* ---------------- UI wiring ---------------- */
+const ampEl=document.getElementById('amp'), sepEl=document.getElementById('sep');
+const runBtn=document.getElementById('run');
+let showWire=true, showCurv=true, showSurf=true;
+
+function zfun(){
+  const A=parseFloat(ampEl.value);
+  if(preset==='saddle') return th=>A*Math.sin(2*th);
+  if(preset==='wavy')   return th=>A*Math.sin(3*th);
+  return th=>0; // flat
+}
+function rebuild(){
+  running=false; updateRunBtn();
+  if(preset==='rings'){ buildTube(parseFloat(sepEl.value)); ringStatus(); }
+  else { buildDisk(zfun());
+    if(preset==='flat') setStatus('ok','Flat boundary → the minimal surface is the flat disk. Try a <b>saddle</b> or <b>wavy</b> ring for a curved one.');
+    else setStatus('ok','Press <b>Relax</b> to flow the mesh down the area gradient toward \\(H=0\\).');
+  }
+  const {area,res}=measureOnly(); updateStats(area,0);
+  fitCamera();
+}
+function measureOnly(){ // area without moving
+  let area=0;
+  for(const [i,j,k] of tris){
+    const e1x=V[j*3]-V[i*3], e1y=V[j*3+1]-V[i*3+1], e1z=V[j*3+2]-V[i*3+2];
+    const e2x=V[k*3]-V[i*3], e2y=V[k*3+1]-V[i*3+1], e2z=V[k*3+2]-V[i*3+2];
+    const cx=e1y*e2z-e1z*e2y, cy=e1z*e2x-e1x*e2z, cz=e1x*e2y-e1y*e2x;
+    area+=0.5*Math.hypot(cx,cy,cz);
+  } return {area};
+}
+function fitCamera(){
+  target.set(0,0,0);
+  camR = preset==='rings' ? 3.4+parseFloat(sepEl.value)*0.8 : 3.6;
+  placeCam();
+}
+function updateRunBtn(){ runBtn.textContent=running?'⏸ Pause':'▶ Relax';
+  runBtn.classList.toggle('running',running); }
+function syncToggles(){
+  if(surfMesh) surfMesh.visible=showSurf;
+  if(wireMesh) wireMesh.visible=showWire;
+}
+
+document.querySelectorAll('.pbtn').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.pbtn').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  preset=b.dataset.preset;
+  document.getElementById('ctlAmp').style.display = (preset==='rings')?'none':'block';
+  document.getElementById('ctlSep').style.display = (preset==='rings')?'block':'none';
+  rebuild();
+}));
+ampEl.addEventListener('input',()=>{document.getElementById('ampVal').textContent=parseFloat(ampEl.value).toFixed(2); rebuild();});
+sepEl.addEventListener('input',()=>{document.getElementById('sepVal').textContent=parseFloat(sepEl.value).toFixed(2); rebuild();});
+
+runBtn.addEventListener('click',()=>{ if(collapsed)return; running=!running; updateRunBtn(); });
+document.getElementById('reset').addEventListener('click',rebuild);
+document.getElementById('step').addEventListener('click',()=>{ if(collapsed)return; for(let s=0;s<20;s++) doStep(); });
+
+document.getElementById('tWire').addEventListener('click',function(){showWire=!showWire;this.classList.toggle('on',showWire);syncToggles();});
+document.getElementById('tSurf').addEventListener('click',function(){showSurf=!showSurf;this.classList.toggle('on',showSurf);syncToggles();});
+document.getElementById('tCurv').addEventListener('click',function(){showCurv=!showCurv;this.classList.toggle('on',showCurv);recolor();});
+
+/* ---------- step driver ---------- */
+function doStep(){
+  if(collapsed)return;
+  const {area,res}=areaStep();
+  if(preset==='rings' && neckRadius()<0.06){ collapseToDisks(); updateStats(area,res); return; }
+  recolor(); pushPositions(); rebuildBoundary(); updateStats(area,res);
+  if(res<6e-4 && iter>40){ running=false; updateRunBtn();
+    if(!collapsed && preset!=='flat') setStatus('ok','<b>Converged.</b> The residual \\(\\|\\nabla A\\|\\) is ~0 everywhere — the mesh is a discrete minimal surface (\\(H\\approx0\\)).'); }
+}
+
+/* ---------- render loop ---------- */
+function loop(){
+  requestAnimationFrame(loop);
+  if(running){ for(let s=0;s<3;s++) doStep(); }
+  renderer.render(scene,camera);
+}
+
+/* ---------- KaTeX ---------- */
+function renderMath(el){ if(window.renderMathInElement) renderMathInElement(el,{delimiters:[{left:'\\(',right:'\\)',display:false}],throwOnError:false}); }
+
+/* ---------- boot ---------- */
+function boot(){
+  resize(); rebuild(); placeCam(); loop();
+  if(window.renderMathInElement) renderMath(document.body);
+}
+if(document.readyState!=='loading') addEventListener('load',boot);
+else document.addEventListener('DOMContentLoaded',()=>addEventListener('load',boot));
+</script>
+</html>

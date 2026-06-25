@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>minsurf — Minimal Surface Toolkit</title>
+<style>
+:root{
+  --bg:#070d14; --panel:#0d1925; --line:rgba(120,150,170,.18);
+  --teal:#16c0b0; --teal-br:#2dd4bf; --gold:#f5a623;
+  --txt:#dbe6ee; --mut:#93a4b2;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100%;background:radial-gradient(120% 80% at 70% -10%,#122231 0%,var(--bg) 60%);
+  color:var(--txt);font-family:var(--sans);}
+header{text-align:center;padding:64px 24px 40px;}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal);margin-bottom:14px;}
+h1{font-size:clamp(2rem,5vw,3.4rem);font-weight:900;color:#fff;line-height:1.1;margin-bottom:16px;}
+.sub{font-size:clamp(1rem,2vw,1.15rem);color:var(--mut);max-width:600px;margin:0 auto 36px;line-height:1.6;}
+.pills{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:56px;}
+.pill{font-size:12px;font-weight:600;border:1px solid var(--line);border-radius:999px;
+  padding:6px 14px;color:var(--mut);background:rgba(255,255,255,.03);}
+.pill.hi{border-color:rgba(45,212,191,.4);color:var(--teal-br);background:rgba(22,192,176,.08);}
+
+/* --- cards grid --- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:20px;max-width:1100px;margin:0 auto;padding:0 24px 80px;}
+a.card{display:flex;flex-direction:column;gap:10px;padding:28px 26px;
+  border:1px solid var(--line);border-radius:18px;
+  background:linear-gradient(145deg,rgba(13,25,37,.9),rgba(7,13,20,.7));
+  text-decoration:none;color:inherit;
+  transition:border-color .18s,transform .18s,box-shadow .18s;}
+a.card:hover{border-color:var(--teal);transform:translateY(-3px);
+  box-shadow:0 12px 40px rgba(22,192,176,.12);}
+.card-icon{font-size:28px;line-height:1;}
+.card-title{font-size:17px;font-weight:800;color:#fff;}
+.card-desc{font-size:13.5px;color:var(--mut);line-height:1.55;}
+.card-tag{margin-top:auto;font-size:11px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--teal);}
+
+/* install block */
+.install{max-width:560px;margin:0 auto 60px;padding:0 24px;}
+.install h2{font-size:14px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--teal-br);margin-bottom:12px;}
+pre{background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:12px;
+  padding:18px 20px;font-size:13.5px;overflow-x:auto;color:#b8d4e0;line-height:1.7;}
+code{font-family:"SF Mono","Fira Code",Consolas,monospace;}
+
+footer{text-align:center;padding:24px;font-size:12px;color:var(--mut);
+  border-top:1px solid var(--line);}
+footer a{color:var(--teal-br);text-decoration:none;}
+</style>
+
+<header>
+  <div class="eyebrow">Differential Geometry · Open Source</div>
+  <h1>minsurf</h1>
+  <p class="sub">Discrete minimal-surface toolkit — soap-film form-finding, TPMS generator for 3-D printing, and cotangent-Laplacian flow with exact-solution validation.</p>
+  <div class="pills">
+    <span class="pill hi">74 tests passing</span>
+    <span class="pill">Python 3.10 – 3.12</span>
+    <span class="pill">MIT License</span>
+    <span class="pill">No heavy deps</span>
+  </div>
+</header>
+
+<div class="install">
+  <h2>Install</h2>
+  <pre><code>pip install minsurf            <span style="color:var(--mut)"># core solver</span>
+pip install "minsurf[tpms]"    <span style="color:var(--mut)"># + Gyroid / TPMS generator</span></code></pre>
+</div>
+
+<div class="grid">
+
+  <a class="card" href="soap_film_solver.html">
+    <div class="card-icon">🫧</div>
+    <div class="card-title">Soap-Film Solver</div>
+    <div class="card-desc">Pick a wire frame — saddle ring, wavy ring, two-ring catenoid, or flat disk. Watch the mesh flow to zero mean curvature in real time. See the Goldschmidt collapse past ratio 1.3255.</div>
+    <div class="card-tag">Interactive · runs in browser</div>
+  </a>
+
+  <a class="card" href="tpms_explorer.html">
+    <div class="card-icon">🔬</div>
+    <div class="card-title">TPMS Explorer</div>
+    <div class="card-desc">GPU-raymarched Triply Periodic Minimal Surfaces — Gyroid, Schwartz-P, Diamond, Neovius. Adjust unit cells and level offset in real time. These are the gold-standard infill for FDM 3-D printing.</div>
+    <div class="card-tag">WebGL raymarching · 60 fps</div>
+  </a>
+
+  <a class="card" href="associate_family.html">
+    <div class="card-icon">🌀</div>
+    <div class="card-title">Associate Family</div>
+    <div class="card-desc">Drag the θ slider to isometrically deform the catenoid into the helicoid — every intermediate surface is also minimal. Visualises the Weierstrass–Enneper representation.</div>
+    <div class="card-tag">Catenoid ↔ Helicoid morph</div>
+  </a>
+
+  <a class="card" href="formfinding.html">
+    <div class="card-icon">🏗️</div>
+    <div class="card-title">Tensile Form-Finding</div>
+    <div class="card-desc">Click the plan grid to place mast supports at any height. Press Solve — the membrane relaxes to its minimal-area shape. Export the result as OBJ for use in Rhino or Blender.</div>
+    <div class="card-tag">Architectural membranes · OBJ export</div>
+  </a>
+
+</div>
+
+<footer>
+  <a href="https://github.com/Ryansanei/minsurf">github.com/Ryansanei/minsurf</a>
+  &nbsp;·&nbsp; MIT License
+</footer>
+
+</html>
