@@ -7,10 +7,19 @@
 
 **Discrete minimal-surface toolkit** — soap-film form-finding, TPMS generator for 3-D printing, cotangent-Laplacian mean-curvature flow with exact-solution validation.
 
-**Live demos** (GitHub Pages):
-- [Associate Family morph](https://ryansan.github.io/minsurf/associate_family.html) — catenoid ↔ helicoid slider
-- [Tensile Form-Finding](https://ryansan.github.io/minsurf/formfinding.html) — place masts, solve membrane, export OBJ
-- [TPMS Explorer](https://ryansan.github.io/minsurf/tpms_explorer.html) — raymarched Gyroid / Schwartz-P / Diamond
+**Try it live — no install needed:**
+
+| Demo | What it shows |
+|---|---|
+| [TPMS Explorer](https://ryansanei.github.io/minsurf/tpms_explorer.html) | GPU-raymarched Gyroid / Schwartz-P / Diamond / Neovius — drag to orbit, sliders for cells and level |
+| [Tensile Form-Finding](https://ryansanei.github.io/minsurf/formfinding.html) | Click to place masts, press Solve, export OBJ |
+| [Associate Family](https://ryansanei.github.io/minsurf/associate_family.html) | Drag the θ slider to morph catenoid ↔ helicoid |
+
+**Install the Python library:**
+```bash
+pip install minsurf              # core solver
+pip install "minsurf[tpms]"      # + TPMS / Gyroid generator
+```
 
 ---
 
