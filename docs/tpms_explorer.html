@@ -116,7 +116,7 @@ minsurf gyroid --cells 2 --output gyroid.stl
 /*  Raymarching TPMS via Three.js ShaderMaterial (full-screen quad)   */
 /* ------------------------------------------------------------------ */
 const stage = document.getElementById('stage');
-const renderer = new THREE.WebGLRenderer({antialias:true,alpha:true});
+const renderer = new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 stage.appendChild(renderer.domElement);
 

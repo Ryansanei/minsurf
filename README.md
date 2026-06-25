@@ -14,6 +14,23 @@
 
 ---
 
+## Gallery
+
+<table>
+<tr>
+<td align="center"><img src="docs/assets/screenshots/gyroid_render.png" width="260" alt="Gyroid dark render"><br><sub>Gyroid · coloured by height</sub></td>
+<td align="center"><img src="docs/assets/screenshots/schwartz_p_render.png" width="260" alt="Schwartz-P dark render"><br><sub>Schwartz-P · teal-amber colourmap</sub></td>
+<td align="center"><img src="docs/assets/screenshots/diamond_render.png" width="260" alt="Diamond dark render"><br><sub>Diamond · directional shading</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/assets/screenshots/catenoid_render.png" width="260" alt="Catenoid coloured by mean curvature"><br><sub>Catenoid · coloured by |H|</sub></td>
+<td align="center"><img src="docs/assets/screenshots/catenoid_profile.png" width="260" alt="Catenoid r vs z profile"><br><sub>Catenoid r(z) · solved vs exact</sub></td>
+<td align="center" valign="middle"><a href="https://ryansan.github.io/minsurf/tpms_explorer.html"><img src="https://img.shields.io/badge/Live-TPMS%20Explorer-teal?style=for-the-badge" alt="TPMS Explorer live demo"></a><br><br><a href="https://ryansan.github.io/minsurf/formfinding.html"><img src="https://img.shields.io/badge/Live-Form--Finding-teal?style=for-the-badge" alt="Form-Finding live demo"></a></td>
+</tr>
+</table>
+
+---
+
 ## Overview
 
 `minsurf` computes **discrete minimal surfaces** (soap films): triangulated surfaces of zero mean curvature with a fixed boundary, found by relaxing a seed mesh under discrete mean-curvature flow.  
@@ -235,6 +252,8 @@ io.write_stl(mesh, "gyroid.stl")
 ```
 
 Requires: `pip install scikit-image` (or `pip install minsurf[tpms]`).
+
+Interactive browser demo (no install): [TPMS Explorer →](https://ryansan.github.io/minsurf/tpms_explorer.html)
 
 ---
 

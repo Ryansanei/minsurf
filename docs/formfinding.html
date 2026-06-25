@@ -574,7 +574,7 @@ function loadPreset(name){
       {cx:-2,cz: 2,h:0.0,gi:Math.round((N-2)),gj:Math.round(1),color:MAST_COLORS[2]},
       {cx: 2,cz:-2,h:0.0,gi:Math.round(1),gj:Math.round(N-2),color:MAST_COLORS[3]},
     ];
-    const pts=[[-2,-2,3],[2,2,3],[-2,2,0],[2,-2,0]];
+    const pts=[[-2,-2,3.0],[2,2,3.0],[-2,2,-1.5],[2,-2,-1.5]];
     masts=pts.map(([cx,cz,h],i)=>{
       const [gi,gj]=worldToGrid(cx,cz);
       return{cx,cz,h,gi,gj,color:MAST_COLORS[i]};
