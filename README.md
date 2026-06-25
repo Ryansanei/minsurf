@@ -11,6 +11,7 @@
 
 | Demo | What it shows |
 |---|---|
+| [Soap-Film Solver](https://ryansanei.github.io/minsurf/soap_film_solver.html) | Pick a wire frame (saddle ring, wavy ring, two-ring catenoid) — watch the mesh flow to H=0 in real time; see the Goldschmidt collapse at ratio 1.3255 |
 | [TPMS Explorer](https://ryansanei.github.io/minsurf/tpms_explorer.html) | GPU-raymarched Gyroid / Schwartz-P / Diamond / Neovius — drag to orbit, sliders for cells and level |
 | [Tensile Form-Finding](https://ryansanei.github.io/minsurf/formfinding.html) | Click to place masts, press Solve, export OBJ |
 | [Associate Family](https://ryansanei.github.io/minsurf/associate_family.html) | Drag the θ slider to morph catenoid ↔ helicoid |
